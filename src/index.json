@@ -21,7 +21,7 @@
       "elements": [
         {
           "id": "metric",
-          "label": "Metric",
+          "label": "Metrica",
           "type": "METRIC",
           "options": {
             "min": 1,
@@ -35,17 +35,8 @@
       "label": "Categorias de Dispersão",
       "elements": [
         {
-          "id": "dimension",
-          "label": "Dimensão de Dispersão",
-          "type": "DIMENSION",
-          "options": {
-            "min": 1,
-            "max": 1
-          }
-        },
-        {
           "id": "metric1",
-          "label": "Metrica Y",
+          "label": "Metrica de Y",
           "type": "METRIC",
           "options": {
             "min": 1,
@@ -54,8 +45,8 @@
         },
         {
           "id": "metric2",
-          "label": "Metrica X",
-          "type": "METRIC",
+          "label": "Dimensão de X",
+          "type": "DIMENSION",
           "options": {
             "min": 1,
             "max": 1
@@ -79,5 +70,11 @@
         }
       ]
     }
-  ]  
+  ],
+  "interactions": [
+    {
+      "id": "onClick",
+      "supportedActions": ["FILTER"]
+    }
+  ]
 }
