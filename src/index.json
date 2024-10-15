@@ -58,15 +58,39 @@
   "style": [
     {
       "id": "barStyling",
-      "label": "Bar Styles",
+      "label": "Estilos do Gráfico Barras",
       "elements": [
         {
           "id": "barColor",
-          "label": "Bar Color",
+          "label": "Cor das Barras",
           "type": "FILL_COLOR",
           "defaultValue": {
             "color": "#1E555C"
           }
+        }
+      ]
+    },
+    {
+      "id": "scatterStyling",
+      "label": "Estilos do Gáfico de Dispersão",
+      "elements": [
+        {
+          "id": "scatterFilter1",
+          "label": "Valor mínimo do eixo",
+          "defaultValue": "0",
+          "type": "INTERVAL"
+        },
+        {
+          "id": "scatterFilter2",
+          "label": "Valor máximo do eixo",
+          "defaultValue": "1",
+          "type": "INTERVAL"
+        },
+        {
+          "id": "scatterFilter3",
+          "label": "Mostrar valores nulos",
+          "defaultValue": "false",
+          "type": "CHECKBOX"
         }
       ]
     }

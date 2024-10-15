@@ -69,12 +69,12 @@ function click(d, message) {
 }
 
 // Função para construir a tooltip
-const buildTooltip = (d, fields) => {
+const buildTooltip = (d, fields, chartType) => {
   const temporalDim = `Data: ${d.temporalDimension[0]}`;  // Usar temporalDimension para exibir a data
-  if (fields.metric) {
+  if (chartType === "barras") {
     const met = `Precipitação: ${d.metric[0]}`;  // Usar metric para exibir a precipitação
     return `${temporalDim}<br> ${met}`;
-  } else if (fields.metric1 && fields.metric2) {
+  } else if (chartType === "dispersao") {
     const metX = `Agrotóxico: ${d.metric2[0]}`;  // metric2 para exibir o tipo de agrotóxico
     const metY = `Concentração: ${d.metric1[0]}`;  // metric1 para exibir a concentração de agrotóxico
     return `${temporalDim}<br> ${metX}<br> ${metY}`;
@@ -97,14 +97,25 @@ const createBarScales = (data, chartWidth, chartHeight) => {
 };
 
 // Função para criar escalas X e Y para o gráfico de dispersão (temporalDimension no eixo X)
-const createScatterScales = (data, chartWidth, chartHeight) => {
+const createScatterScales = (data, chartWidth, chartHeight, message) => {
   const xScale = d3.scaleBand()
     .domain(data.map(d => d.temporalDimension[0]))  // Usar temporalDimension como X (datas)
     .range([0, chartWidth])
-    .padding(0.2);
+    .padding(0.5);
+
+  // Obter os valores dos filtros para o eixo Y
+  let scatterFilter1 = parseInt(message.style.scatterFilter1.value) || parseInt(message.style.scatterFilter1.defaultValue);
+  let scatterFilter2 = parseInt(message.style.scatterFilter2.value) || parseInt(message.style.scatterFilter2.defaultValue);
+
+  // Verificar se scatterFilter1 e scatterFilter2 estão muito próximos e adicionar um padding extra se necessário
+  const padding = 0.1; // Margem de segurança para o intervalo
+  if (scatterFilter2 - scatterFilter1 < padding) {
+    scatterFilter1 -= padding / 2;
+    scatterFilter2 += padding / 2;
+  }
 
   const yScale = d3.scaleLinear()
-    .domain([0, d3.max(data.map(d => d.metric1[0]))])  // metric1 como eixo Y (concentração de agrotóxicos)
+    .domain([scatterFilter1, scatterFilter2])  // Aplicar os valores dos filtros para o eixo Y
     .range([chartHeight, 0]);  // Crescimento de baixo para cima
 
   return { xScale, yScale };
@@ -124,7 +135,7 @@ const drawBars = (svg, data, xScale, yScale, chartHeight, barColor, message) => 
     .on("click", (event, d) => click(d, message))  // Adicionar comportamento de clique
     .on("mouseover", function (event, d) {
       tooltip
-        .html(buildTooltip(d, message.fields))
+        .html(buildTooltip(d, message.fields, "barras"))  // Atualizar tooltip para gráfico de barras
         .style("opacity", 1);
     })
     .on("mousemove", function (event) {
@@ -140,21 +151,36 @@ const drawBars = (svg, data, xScale, yScale, chartHeight, barColor, message) => 
 // Função para desenhar o gráfico de dispersão (concentração de agrotóxicos)
 const drawScatter = (svg, data, xScale, yScale, message) => {
   // Escolher uma cor ou símbolo diferente para cada agrotóxico baseado no metric2
-  const colorScale = d3.scaleOrdinal(d3.schemeCategory10)  // Escala de cores para diferentes agrotóxicos
-    .domain(data.map(d => d.metric2[0]));  // metric2 define os tipos de agrotóxico
+  const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
+    .domain(data.map(d => d.metric2[0])); // metric2 define os tipos de agrotóxico
+
+  // Verificar se devemos mostrar valores nulos
+  const showNulls = (message.style.scatterFilter3.value === "true") || (message.style.scatterFilter3.defaultValue === "true");
+
+  // Obter os valores dos filtros para o eixo Y
+  const scatterFilter1 = parseInt(message.style.scatterFilter1.value) || parseInt(message.style.scatterFilter1.defaultValue);
+  const scatterFilter2 = parseInt(message.style.scatterFilter2.value) || parseInt(message.style.scatterFilter2.defaultValue);
+
+  // Filtrar os dados para remover valores fora do intervalo de scatterFilter1 e scatterFilter2, além de valores nulos
+  const filteredData = data.filter(d => {
+    const metricValue = d.metric1[0];
+    return (showNulls || (metricValue !== null && d.metric2[0] !== null)) &&
+      metricValue >= scatterFilter1 && metricValue <= scatterFilter2 && 
+      metricValue !== -99; // Remover valores indesejados como -99
+  });
 
   svg.selectAll("circle")
-    .data(data)
+    .data(filteredData)
     .enter()
     .append("circle")
-    .attr("cx", d => xScale(d.temporalDimension[0]) + xScale.bandwidth() / 2)  // Usar temporalDimension como X (datas)
-    .attr("cy", d => yScale(d.metric1[0]))  // metric1 para o eixo Y (concentração de agrotóxicos)
+    .attr("cx", d => xScale(d.temporalDimension[0]) + xScale.bandwidth() / 2) // Usar temporalDimension como X (datas)
+    .attr("cy", d => yScale(d.metric1[0])) // metric1 para o eixo Y, com valores decimais
     .attr("r", 5)
-    .attr("fill", d => colorScale(d.metric2[0]))  // Cor baseada no tipo de agrotóxico (metric2)
-    .on("click", (event, d) => click(d, message))  // Adicionar comportamento de clique
+    .attr("fill", d => colorScale(d.metric2[0])) // Cor baseada no tipo de agrotóxico (metric2)
+    .on("click", (event, d) => click(d, message)) // Adicionar comportamento de clique
     .on("mouseover", function (event, d) {
       tooltip
-        .html(buildTooltip(d, message.fields))
+        .html(buildTooltip(d, message.fields, "dispersao")) // Atualizar tooltip para gráfico de dispersão
         .style("opacity", 1);
     })
     .on("mousemove", function (event) {
@@ -208,7 +234,7 @@ const drawViz = (message) => {
 
   // Dados e escalas para o gráfico de dispersão (concentração de agrotóxicos)
   const scatterData = message.tables.DEFAULT;
-  const { xScale: scatterXScale, yScale: scatterYScale } = createScatterScales(scatterData, chartWidth, scatterChartHeight);
+  const { xScale: scatterXScale, yScale: scatterYScale } = createScatterScales(scatterData, chartWidth, scatterChartHeight, message);
 
   // Adicionar o gráfico de dispersão na parte inferior
   const scatterSvg = svg.append("g")

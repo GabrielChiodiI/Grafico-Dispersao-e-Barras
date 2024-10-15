@@ -815,20 +815,6 @@ export const message = {
       },
       {
         "temporalDimension": [
-          "20230717"
-        ],
-        "metric2": [
-          null
-        ],
-        "metric": [
-          0
-        ],
-        "metric1": [
-          null
-        ]
-      },
-      {
-        "temporalDimension": [
           "20230718"
         ],
         "metric2": [
@@ -945,6 +931,20 @@ export const message = {
         ],
         "metric2": [
           "Acetamiprido"
+        ],
+        "metric": [
+          0
+        ],
+        "metric1": [
+          -99
+        ]
+      },
+      {
+        "temporalDimension": [
+          "20230725"
+        ],
+        "metric2": [
+          "Carbofurano"
         ],
         "metric": [
           0
@@ -1630,20 +1630,6 @@ export const message = {
           "20230725"
         ],
         "metric2": [
-          "Carbendazim"
-        ],
-        "metric": [
-          0
-        ],
-        "metric1": [
-          null
-        ]
-      },
-      {
-        "temporalDimension": [
-          "20230725"
-        ],
-        "metric2": [
           "Bentazona"
         ],
         "metric": [
@@ -1728,13 +1714,13 @@ export const message = {
           "20230725"
         ],
         "metric2": [
-          "Carbofurano"
+          "Carbendazim"
         ],
         "metric": [
           0
         ],
         "metric1": [
-          -99
+          null
         ]
       },
       {
@@ -1783,14 +1769,14 @@ export const message = {
   },
   "dateRanges": {
     "DEFAULT": {
-      "start": "20230717",
+      "start": "20230718",
       "end": "20230728"
     }
   },
   "fields": {
     "temporalDimension": [
       {
-        "id": "qt_oy0289wzld",
+        "id": "qt_dsxc3200ld",
         "name": "Data",
         "type": "YEAR_MONTH_DAY",
         "concept": "DIMENSION"
@@ -1798,7 +1784,7 @@ export const message = {
     ],
     "metric": [
       {
-        "id": "qt_qy0289wzld",
+        "id": "qt_7jyc3200ld",
         "name": "Precipitação",
         "type": "NUMBER",
         "concept": "METRIC"
@@ -1806,7 +1792,7 @@ export const message = {
     ],
     "metric1": [
       {
-        "id": "qt_ry0289wzld",
+        "id": "qt_8jyc3200ld",
         "name": "CONCENTRAÇÃO (µg L⁻¹)",
         "type": "NUMBER",
         "concept": "METRIC"
@@ -1814,7 +1800,7 @@ export const message = {
     ],
     "metric2": [
       {
-        "id": "qt_py0289wzld",
+        "id": "qt_esxc3200ld",
         "name": "AGROTÓXICO",
         "type": "TEXT",
         "concept": "DIMENSION"
@@ -1829,6 +1815,16 @@ export const message = {
       "defaultValue": {
         "color": "#1e555c"
       }
+    },
+    "scatterFilter1": {
+      "value": 0
+    },
+    "scatterFilter2": {
+      "value": 1
+    },
+    "scatterFilter3": {
+      "value": false,
+      "defaultValue": false
     }
   },
   "theme": {
@@ -2008,6 +2004,13 @@ export const message = {
       "color": "#d1d1d1"
     }
   },
-  "interactions": {},
+  "interactions": {
+    "onClick": {
+      "value": {},
+      "supportedActions": [
+        "FILTER"
+      ]
+    }
+  },
   "colorMap": {}
 };
