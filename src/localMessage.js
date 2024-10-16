@@ -1817,10 +1817,10 @@ export const message = {
       }
     },
     "scatterFilter1": {
-      "value": 0
+      "value": 1
     },
     "scatterFilter2": {
-      "value": 1
+      "value": -1
     },
     "scatterFilter3": {
       "value": false,

@@ -96,29 +96,51 @@ const createBarScales = (data, chartWidth, chartHeight) => {
   return { xScale, yScale };
 };
 
+// Função para arredondar o valor máximo para o próximo intervalo "adequado"
+const roundUpToNearest = (value) => {
+  if (value <= 0.05) return 0.05;
+  if (value <= 0.1) return 0.1;
+  if (value <= 0.5) return 0.5;
+  if (value <= 1) return 1;
+  return Math.ceil(value * 10) / 10; // Arredonda para o próximo múltiplo de 0.1
+};
+
 // Função para criar escalas X e Y para o gráfico de dispersão (temporalDimension no eixo X)
 const createScatterScales = (data, chartWidth, chartHeight, message) => {
   const xScale = d3.scaleBand()
     .domain(data.map(d => d.temporalDimension[0]))  // Usar temporalDimension como X (datas)
     .range([0, chartWidth])
-    .padding(0.5);
+    .padding(0.2);
 
-  // Obter os valores dos filtros para o eixo Y
-  let scatterFilter1 = parseInt(message.style.scatterFilter1.value) || parseInt(message.style.scatterFilter1.defaultValue);
-  let scatterFilter2 = parseInt(message.style.scatterFilter2.value) || parseInt(message.style.scatterFilter2.defaultValue);
+  // Filtrar os dados para considerar apenas os valores dentro dos limites configurados
+  const scatterFilter2 = parseFloat(message.style.scatterFilter2.value) || parseFloat(message.style.scatterFilter2.defaultValue);
+  const scatterFilter1 = parseFloat(message.style.scatterFilter1.value) || parseFloat(message.style.scatterFilter1.defaultValue);
+  const filteredData = data.filter(d => {
+    const metricValue = d.metric1[0];
+    return metricValue >= scatterFilter2 && metricValue <= scatterFilter1;
+  });
 
-  // Verificar se scatterFilter1 e scatterFilter2 estão muito próximos e adicionar um padding extra se necessário
-  const padding = 0.1; // Margem de segurança para o intervalo
-  if (scatterFilter2 - scatterFilter1 < padding) {
-    scatterFilter1 -= padding / 2;
-    scatterFilter2 += padding / 2;
-  }
+  // Encontrar o valor máximo nos dados filtrados
+  const maxDataValue = d3.max(filteredData, d => d.metric1[0]) || 0;
+  
+  // Arredondar o valor máximo para o próximo intervalo "adequado"
+  const roundedMaxValue = roundUpToNearest(maxDataValue);
 
+  // Criar a escala Y partindo de 0 até o valor arredondado
   const yScale = d3.scaleLinear()
-    .domain([scatterFilter1, scatterFilter2])  // Aplicar os valores dos filtros para o eixo Y
+    .domain([0, roundedMaxValue])  // Partindo de 0 até o valor arredondado máximo
     .range([chartHeight, 0]);  // Crescimento de baixo para cima
 
   return { xScale, yScale };
+};
+
+// Função para desenhar os eixos Y com intervalos de 20% do valor arredondado
+const drawYAxis = (svg, yScale, chartHeight) => {
+  svg.append("g")
+    .call(d3.axisLeft(yScale)
+      .ticks(5) // Dividir em 5 intervalos
+      .tickFormat(d3.format(".1f"))) // Formato de exibição com 1 casa decimal
+    .attr("transform", `translate(0, 0)`);
 };
 
 // Função para desenhar o gráfico de barras (precipitação de chuva)
@@ -150,37 +172,33 @@ const drawBars = (svg, data, xScale, yScale, chartHeight, barColor, message) => 
 
 // Função para desenhar o gráfico de dispersão (concentração de agrotóxicos)
 const drawScatter = (svg, data, xScale, yScale, message) => {
-  // Escolher uma cor ou símbolo diferente para cada agrotóxico baseado no metric2
+  // Escala de cores para diferentes agrotóxicos
   const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
-    .domain(data.map(d => d.metric2[0])); // metric2 define os tipos de agrotóxico
+    .domain(data.map(d => d.metric2[0]));
 
-  // Verificar se devemos mostrar valores nulos
   const showNulls = (message.style.scatterFilter3.value === "true") || (message.style.scatterFilter3.defaultValue === "true");
 
-  // Obter os valores dos filtros para o eixo Y
-  const scatterFilter1 = parseInt(message.style.scatterFilter1.value) || parseInt(message.style.scatterFilter1.defaultValue);
-  const scatterFilter2 = parseInt(message.style.scatterFilter2.value) || parseInt(message.style.scatterFilter2.defaultValue);
-
-  // Filtrar os dados para remover valores fora do intervalo de scatterFilter1 e scatterFilter2, além de valores nulos
+  // Filtrar os dados para manter apenas os valores dentro dos limites configurados
+  const scatterFilter2 = parseFloat(message.style.scatterFilter2.value) || parseFloat(message.style.scatterFilter2.defaultValue);
+  const scatterFilter1 = parseFloat(message.style.scatterFilter1.value) || parseFloat(message.style.scatterFilter1.defaultValue);
   const filteredData = data.filter(d => {
     const metricValue = d.metric1[0];
-    return (showNulls || (metricValue !== null && d.metric2[0] !== null)) &&
-      metricValue >= scatterFilter1 && metricValue <= scatterFilter2 && 
-      metricValue !== -99; // Remover valores indesejados como -99
+    return (showNulls || metricValue !== null) &&
+      metricValue >= scatterFilter2 && metricValue <= scatterFilter1;
   });
 
   svg.selectAll("circle")
     .data(filteredData)
     .enter()
     .append("circle")
-    .attr("cx", d => xScale(d.temporalDimension[0]) + xScale.bandwidth() / 2) // Usar temporalDimension como X (datas)
-    .attr("cy", d => yScale(d.metric1[0])) // metric1 para o eixo Y, com valores decimais
+    .attr("cx", d => xScale(d.temporalDimension[0]) + xScale.bandwidth() / 2)
+    .attr("cy", d => yScale(d.metric1[0]))
     .attr("r", 5)
-    .attr("fill", d => colorScale(d.metric2[0])) // Cor baseada no tipo de agrotóxico (metric2)
-    .on("click", (event, d) => click(d, message)) // Adicionar comportamento de clique
+    .attr("fill", d => colorScale(d.metric2[0]))
+    .on("click", (event, d) => click(d, message))
     .on("mouseover", function (event, d) {
       tooltip
-        .html(buildTooltip(d, message.fields, "dispersao")) // Atualizar tooltip para gráfico de dispersão
+        .html(buildTooltip(d, message.fields, "dispersao"))
         .style("opacity", 1);
     })
     .on("mousemove", function (event) {

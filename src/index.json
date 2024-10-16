@@ -76,14 +76,14 @@
       "elements": [
         {
           "id": "scatterFilter1",
-          "label": "Valor mínimo do eixo",
-          "defaultValue": "0",
+          "label": "Valor máximo do eixo",
+          "defaultValue": "",
           "type": "INTERVAL"
         },
         {
           "id": "scatterFilter2",
-          "label": "Valor máximo do eixo",
-          "defaultValue": "1",
+          "label": "Valor mínimo do eixo",
+          "defaultValue": "",
           "type": "INTERVAL"
         },
         {
