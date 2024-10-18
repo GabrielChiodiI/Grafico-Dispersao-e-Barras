@@ -1816,12 +1816,8 @@ export const message = {
         "color": "#1e555c"
       }
     },
-    "scatterFilter1": {
-      "value": 1
-    },
-    "scatterFilter2": {
-      "value": -1
-    },
+    "scatterFilter1": {},
+    "scatterFilter2": { "value": 0 },
     "scatterFilter3": {
       "value": false,
       "defaultValue": false

@@ -96,50 +96,69 @@ const createBarScales = (data, chartWidth, chartHeight) => {
   return { xScale, yScale };
 };
 
-// Função para arredondar o valor máximo para o próximo intervalo "adequado"
-const roundUpToNearest = (value) => {
-  if (value <= 0.05) return 0.05;
-  if (value <= 0.1) return 0.1;
-  if (value <= 0.5) return 0.5;
-  if (value <= 1) return 1;
-  return Math.ceil(value * 10) / 10; // Arredonda para o próximo múltiplo de 0.1
+// Função para identificar a maior significância do maior valor absoluto
+const greaterSignificance = (data) => {
+  const maxAbsValue = d3.max(data, d => Math.abs(d.metric1[0])) || 0;
+  if (maxAbsValue === 0) return 1; // Caso especial para zero
+
+  // Retornar a ordem de grandeza mais significativa
+  const magnitude = Math.floor(Math.log10(maxAbsValue));
+  return Math.pow(10, magnitude);
 };
 
-// Função para criar escalas X e Y para o gráfico de dispersão (temporalDimension no eixo X)
-const createScatterScales = (data, chartWidth, chartHeight, message) => {
-  const xScale = d3.scaleBand()
-    .domain(data.map(d => d.temporalDimension[0]))  // Usar temporalDimension como X (datas)
-    .range([0, chartWidth])
-    .padding(0.2);
+// Função para arredondar o valor com base na significância fornecida
+const roundUpToNearest = (value, significance) => {
+  if (value === 0) return 0; // Caso especial para zero
+  const absValue = Math.abs(value);
+  const factor = 1 / significance;
+  const roundedValue = Math.ceil(absValue * factor) / factor;
+  return roundedValue * Math.sign(value); // Retorna o valor com o sinal original
+};
 
-  // Filtrar os dados para considerar apenas os valores dentro dos limites configurados
-  const scatterFilter2 = parseFloat(message.style.scatterFilter2.value) || parseFloat(message.style.scatterFilter2.defaultValue);
-  const scatterFilter1 = parseFloat(message.style.scatterFilter1.value) || parseFloat(message.style.scatterFilter1.defaultValue);
+// Função para calcular os filtros de dispersão
+const getScatterFilters = (message) => {
+  const scatterFilter2 = parseFloat(message.style.scatterFilter2.value) ||
+    parseFloat(message.style.scatterFilter2.defaultValue) || -Infinity;
+  const scatterFilter1 = parseFloat(message.style.scatterFilter1.value) ||
+    parseFloat(message.style.scatterFilter1.defaultValue) || Infinity;
+  return { scatterFilter1, scatterFilter2 };
+};
+
+// Função para criar escalas X e Y para o gráfico de dispersão
+const createScatterScales = (data, chartWidth, chartHeight, message) => {
+  const { scatterFilter1, scatterFilter2 } = getScatterFilters(message);
+  
+  // Filtrar os dados para manter apenas os valores dentro dos limites configurados
   const filteredData = data.filter(d => {
     const metricValue = d.metric1[0];
     return metricValue >= scatterFilter2 && metricValue <= scatterFilter1;
   });
 
-  // Encontrar o valor máximo nos dados filtrados
-  const maxDataValue = d3.max(filteredData, d => d.metric1[0]) || 0;
-  
-  // Arredondar o valor máximo para o próximo intervalo "adequado"
-  const roundedMaxValue = roundUpToNearest(maxDataValue);
+  // Identificar a significância e arredondar os valores máximo e mínimo
+  const significance = greaterSignificance(filteredData);
+  const maxDataValue = roundUpToNearest(d3.max(filteredData, d => d.metric1[0]) || 0, significance);
+  const minDataValue = roundUpToNearest(d3.min(filteredData, d => d.metric1[0]) || 0, significance);
 
-  // Criar a escala Y partindo de 0 até o valor arredondado
+  // Criar a escala Y partindo do valor mínimo arredondado até o máximo arredondado
   const yScale = d3.scaleLinear()
-    .domain([0, roundedMaxValue])  // Partindo de 0 até o valor arredondado máximo
-    .range([chartHeight, 0]);  // Crescimento de baixo para cima
+    .domain([minDataValue, maxDataValue])
+    .range([chartHeight, 0]);
 
-  return { xScale, yScale };
+  // Criar a escala X
+  const xScale = d3.scaleBand()
+    .domain(data.map(d => d.temporalDimension[0]))
+    .range([0, chartWidth])
+    .padding(0.2);
+
+  return { xScale, yScale, filteredData };
 };
 
 // Função para desenhar os eixos Y com intervalos de 20% do valor arredondado
-const drawYAxis = (svg, yScale, chartHeight) => {
+const drawYAxis = (svg, yScale) => {
   svg.append("g")
     .call(d3.axisLeft(yScale)
-      .ticks(5) // Dividir em 5 intervalos
-      .tickFormat(d3.format(".1f"))) // Formato de exibição com 1 casa decimal
+      .ticks(5)
+      .tickFormat(d3.format(".1f")))
     .attr("transform", `translate(0, 0)`);
 };
 
@@ -170,25 +189,15 @@ const drawBars = (svg, data, xScale, yScale, chartHeight, barColor, message) => 
     });
 };
 
-// Função para desenhar o gráfico de dispersão (concentração de agrotóxicos)
-const drawScatter = (svg, data, xScale, yScale, message) => {
-  // Escala de cores para diferentes agrotóxicos
+// Função para desenhar o gráfico de dispersão
+const drawScatter = (svg, filteredData, xScale, yScale, message) => {
   const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
-    .domain(data.map(d => d.metric2[0]));
-
-  const showNulls = (message.style.scatterFilter3.value === "true") || (message.style.scatterFilter3.defaultValue === "true");
-
-  // Filtrar os dados para manter apenas os valores dentro dos limites configurados
-  const scatterFilter2 = parseFloat(message.style.scatterFilter2.value) || parseFloat(message.style.scatterFilter2.defaultValue);
-  const scatterFilter1 = parseFloat(message.style.scatterFilter1.value) || parseFloat(message.style.scatterFilter1.defaultValue);
-  const filteredData = data.filter(d => {
-    const metricValue = d.metric1[0];
-    return (showNulls || metricValue !== null) &&
-      metricValue >= scatterFilter2 && metricValue <= scatterFilter1;
-  });
+    .domain(filteredData.map(d => d.metric2[0]));
+  const showNulls = (message.style.scatterFilter3.value === "true") ||
+    (message.style.scatterFilter3.defaultValue === "true");
 
   svg.selectAll("circle")
-    .data(filteredData)
+    .data(filteredData.filter(d => showNulls || d.metric1[0] !== null))
     .enter()
     .append("circle")
     .attr("cx", d => xScale(d.temporalDimension[0]) + xScale.bandwidth() / 2)
@@ -197,14 +206,10 @@ const drawScatter = (svg, data, xScale, yScale, message) => {
     .attr("fill", d => colorScale(d.metric2[0]))
     .on("click", (event, d) => click(d, message))
     .on("mouseover", function (event, d) {
-      tooltip
-        .html(buildTooltip(d, message.fields, "dispersao"))
-        .style("opacity", 1);
+      tooltip.html(buildTooltip(d, message.fields, "dispersao")).style("opacity", 1);
     })
     .on("mousemove", function (event) {
-      tooltip
-        .style("left", (event.pageX + 10) + "px")
-        .style("top", (event.pageY - 28) + "px");
+      tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 28) + "px");
     })
     .on("mouseout", function () {
       tooltip.style("opacity", 0);
@@ -252,21 +257,22 @@ const drawViz = (message) => {
 
   // Dados e escalas para o gráfico de dispersão (concentração de agrotóxicos)
   const scatterData = message.tables.DEFAULT;
-  const { xScale: scatterXScale, yScale: scatterYScale } = createScatterScales(scatterData, chartWidth, scatterChartHeight, message);
+  const { xScale: scatterXScale, yScale: scatterYScale, filteredData } = createScatterScales(scatterData, chartWidth, scatterChartHeight, message);
 
   // Adicionar o gráfico de dispersão na parte inferior
   const scatterSvg = svg.append("g")
     .attr("transform", `translate(${margin.left}, ${margin.top + barChartHeight + margin.bottom})`);
 
-  drawScatter(scatterSvg, scatterData, scatterXScale, scatterYScale, message);
+  // Desenhar o gráfico de dispersão usando os dados filtrados
+  drawScatter(scatterSvg, filteredData, scatterXScale, scatterYScale, message);
 
   // Adicionar eixos ao gráfico de dispersão
   scatterSvg.append("g")
     .attr("transform", `translate(0, ${scatterChartHeight})`)
     .call(d3.axisBottom(scatterXScale));
 
-  scatterSvg.append("g")
-    .call(d3.axisLeft(scatterYScale));
+  // Chamar a função drawYAxis para configurar o eixo Y do gráfico de dispersão
+  drawYAxis(scatterSvg, scatterYScale);
 };
 
 // Renderizar localmente ou no Google Data Studio
