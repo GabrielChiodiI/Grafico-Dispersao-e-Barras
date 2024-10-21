@@ -96,31 +96,21 @@ const createBarScales = (data, chartWidth, chartHeight) => {
   return { xScale, yScale };
 };
 
-// Função para identificar a maior significância do maior valor absoluto
-const greaterSignificance = (data) => {
-  const maxAbsValue = d3.max(data, d => Math.abs(d.metric1[0])) || 0;
-  if (maxAbsValue === 0) return 1; // Caso especial para zero
-
-  // Retornar a ordem de grandeza mais significativa
-  const magnitude = Math.floor(Math.log10(maxAbsValue));
-  return Math.pow(10, magnitude);
-};
-
-// Função para arredondar o valor com base na significância fornecida
-const roundUpToNearest = (value, significance) => {
-  if (value === 0) return 0; // Caso especial para zero
-  const absValue = Math.abs(value);
-  const factor = 1 / significance;
-  const roundedValue = Math.ceil(absValue * factor) / factor;
-  return roundedValue * Math.sign(value); // Retorna o valor com o sinal original
-};
-
 // Função para calcular os filtros de dispersão
 const getScatterFilters = (message) => {
-  const scatterFilter2 = parseFloat(message.style.scatterFilter2.value) ||
-    parseFloat(message.style.scatterFilter2.defaultValue) || -Infinity;
-  const scatterFilter1 = parseFloat(message.style.scatterFilter1.value) ||
-    parseFloat(message.style.scatterFilter1.defaultValue) || Infinity;
+  // Verifica se o valor foi configurado e não é undefined
+  const scatterFilter2 = message.style.scatterFilter2.value !== undefined
+    ? parseFloat(message.style.scatterFilter2.value)
+    : (message.style.scatterFilter2.defaultValue !== undefined
+        ? parseFloat(message.style.scatterFilter2.defaultValue)
+        : -Infinity);
+
+  const scatterFilter1 = message.style.scatterFilter1.value !== undefined
+    ? parseFloat(message.style.scatterFilter1.value)
+    : (message.style.scatterFilter1.defaultValue !== undefined
+        ? parseFloat(message.style.scatterFilter1.defaultValue)
+        : Infinity);
+
   return { scatterFilter1, scatterFilter2 };
 };
 
@@ -132,16 +122,18 @@ const createScatterScales = (data, chartWidth, chartHeight, message) => {
   const filteredData = data.filter(d => {
     const metricValue = d.metric1[0];
     return metricValue >= scatterFilter2 && metricValue <= scatterFilter1;
+
   });
 
   // Identificar a significância e arredondar os valores máximo e mínimo
-  const significance = greaterSignificance(filteredData);
-  const maxDataValue = roundUpToNearest(d3.max(filteredData, d => d.metric1[0]) || 0, significance);
-  const minDataValue = roundUpToNearest(d3.min(filteredData, d => d.metric1[0]) || 0, significance);
+  const maxDataValue = d3.max(filteredData, d => d.metric1[0]);
+  const minDataValue = d3.min(filteredData, d => d.metric1[0]);
+
+  const padding = (maxDataValue - minDataValue) * 0.01;
 
   // Criar a escala Y partindo do valor mínimo arredondado até o máximo arredondado
   const yScale = d3.scaleLinear()
-    .domain([minDataValue, maxDataValue])
+    .domain([minDataValue - padding, maxDataValue + padding])
     .range([chartHeight, 0]);
 
   // Criar a escala X
@@ -153,12 +145,26 @@ const createScatterScales = (data, chartWidth, chartHeight, message) => {
   return { xScale, yScale, filteredData };
 };
 
+// Função para formatar dinamicamente os rótulos do eixo Y
+const autoFormat = (yScale) => {
+  const maxValue = yScale.domain()[1]; // Valor máximo da escala Y
+
+  if (maxValue >= 1) {
+    // Se o valor máximo for maior ou igual a 1, usar 2 casas decimais
+    return d3.format(".2f");
+  } else {
+    // Caso contrário, ajustar o número de casas decimais dinamicamente
+    const precision = Math.ceil(-Math.log10(maxValue)) + 2;
+    return d3.format(`.${precision}f`);
+  }
+};
+
 // Função para desenhar os eixos Y com intervalos de 20% do valor arredondado
 const drawYAxis = (svg, yScale) => {
   svg.append("g")
     .call(d3.axisLeft(yScale)
       .ticks(5)
-      .tickFormat(d3.format(".1f")))
+      .tickFormat(autoFormat(yScale))) // Usar formatação automática
     .attr("transform", `translate(0, 0)`);
 };
 
@@ -196,25 +202,60 @@ const drawScatter = (svg, filteredData, xScale, yScale, message) => {
   const showNulls = (message.style.scatterFilter3.value === "true") ||
     (message.style.scatterFilter3.defaultValue === "true");
 
-  svg.selectAll("circle")
+  // Função para aplicar jitter ao valor Y
+  const jitterAmount = 5; // Ajuste conforme necessário para o deslocamento
+  const applyJitter = (yValue) => yValue + (Math.random() - 0.5) * jitterAmount;
+
+  const circles = svg.selectAll("circle")
     .data(filteredData.filter(d => showNulls || d.metric1[0] !== null))
     .enter()
     .append("circle")
     .attr("cx", d => xScale(d.temporalDimension[0]) + xScale.bandwidth() / 2)
-    .attr("cy", d => yScale(d.metric1[0]))
+    .attr("cy", d => applyJitter(yScale(d.metric1[0]))) // Aplicar jitter ao valor Y
     .attr("r", 5)
     .attr("fill", d => colorScale(d.metric2[0]))
     .on("click", (event, d) => click(d, message))
     .on("mouseover", function (event, d) {
+      // Mostrar a tooltip ao passar o mouse sobre o ponto
       tooltip.html(buildTooltip(d, message.fields, "dispersao")).style("opacity", 1);
+      d3.select(this).raise().attr("r", 7); // Destacar o ponto trazendo-o para frente e aumentando o raio
     })
     .on("mousemove", function (event) {
+      // Atualizar a posição da tooltip conforme o mouse se move
       tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 28) + "px");
     })
     .on("mouseout", function () {
+      // Ocultar a tooltip quando o mouse sai do ponto
       tooltip.style("opacity", 0);
+      d3.select(this).attr("r", 5); // Restaurar o raio original do ponto
     });
+
+  // Evento de mousemove no contêiner SVG para trazer o ponto mais próximo para frente
+  svg.on("mousemove", function (event) {
+    const [mouseX, mouseY] = d3.pointer(event);
+
+    // Encontrar o círculo mais próximo do mouse
+    let closestCircle = null;
+    let minDistance = Infinity;
+
+    circles.each(function () {
+      const cx = parseFloat(d3.select(this).attr("cx"));
+      const cy = parseFloat(d3.select(this).attr("cy"));
+      const distance = Math.sqrt(Math.pow(cx - mouseX, 2) + Math.pow(cy - mouseY, 2));
+
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestCircle = this;
+      }
+    });
+
+    // Trazer o círculo mais próximo para frente
+    if (closestCircle) {
+      d3.select(closestCircle).raise();
+    }
+  });
 };
+
 
 // Função principal para desenhar as visualizações
 const drawViz = (message) => {
@@ -249,8 +290,8 @@ const drawViz = (message) => {
 
   // Adicionar eixos ao gráfico de barras
   barSvg.append("g")
-    .attr("transform", `translate(0, ${barChartHeight})`)
-    .call(d3.axisBottom(barXScale));
+    .attr("transform", `translate(0, 0)`)
+    .call(d3.axisTop(barXScale).tickFormat(""));
 
   barSvg.append("g")
     .call(d3.axisLeft(barYScale));
@@ -269,7 +310,8 @@ const drawViz = (message) => {
   // Adicionar eixos ao gráfico de dispersão
   scatterSvg.append("g")
     .attr("transform", `translate(0, ${scatterChartHeight})`)
-    .call(d3.axisBottom(scatterXScale));
+    .call(d3.axisBottom(scatterXScale)
+      .ticks(10));
 
   // Chamar a função drawYAxis para configurar o eixo Y do gráfico de dispersão
   drawYAxis(scatterSvg, scatterYScale);
