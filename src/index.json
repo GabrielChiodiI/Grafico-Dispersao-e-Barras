@@ -57,6 +57,44 @@
   ],
   "style": [
     {
+      "id": "generalStyling",
+      "label": "Opções Gerais",
+      "elements": [
+        {
+          "id": "zoom",
+          "label": "Ativar Zoom Horizontal",
+          "defaultValue": "false",
+          "type": "CHECKBOX"
+        },
+        {
+          "id": "scrollBar",
+          "label": "Ativar Barra de Rolagem",
+          "defaultValue": "false",
+          "type": "CHECKBOX"
+        },
+        {
+          "id": "barPosition",
+          "label": "Posição da Barra de Rolagem",
+          "type": "SELECT_SINGLE",
+          "defaultValue": "",
+          "options": [
+            {
+              "label": "Em cima",
+              "value": "top"
+            },
+            {
+              "label": "No meio",
+              "value": "middle"
+            },
+            {
+              "label": "Em baixo",
+              "value": "bottom"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "barStyling",
       "label": "Estilos do Gráfico Barras",
       "elements": [

@@ -11804,6 +11804,17 @@ export const message = {
     ]
   },
   "style": {
+    "zoom": {
+      "value": true,
+      "defaultValue": false
+    },
+    "scrollBar": {
+      "value": true,
+      "defaultValue": false
+    },
+    "barPosition": {
+      "value": "middle"
+    },
     "barColor": {
       "value": {
         "color": "#1e555c"

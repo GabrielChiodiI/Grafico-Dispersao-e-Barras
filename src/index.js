@@ -82,7 +82,7 @@ const buildTooltip = (d, fields, chartType) => {
   return temporalDim;
 };
 
-// Função para criar escalas X e Y para o gráfico de barras (usando datas no eixo X)
+// Função para criar escalas X e Y para o gráfico de barras
 const createBarScales = (data, chartWidth, chartHeight) => {
   const xScale = d3.scaleBand()
     .domain(data.map(d => d.temporalDimension[0]))
@@ -256,9 +256,17 @@ const drawScatter = (svg, filteredData, xScale, yScale, message) => {
   });
 };
 
+// Função para formatar a data de 'YYYYMMDD' para 'DD/MM/YYYY'
+const formatDate = (dateStr) => {
+  const year = dateStr.substring(0, 4);
+  const month = dateStr.substring(4, 6);
+  const day = dateStr.substring(6, 8);
+  return `${day}/${month}/${year}`;
+};
 
 // Função principal para desenhar as visualizações
 const drawViz = (message) => {
+
   const margin = { left: 60, right: 20, top: 20, bottom: 40 };
 
   const height = dscc.getHeight();
@@ -311,7 +319,11 @@ const drawViz = (message) => {
   scatterSvg.append("g")
     .attr("transform", `translate(0, ${scatterChartHeight})`)
     .call(d3.axisBottom(scatterXScale)
-      .ticks(10));
+      .ticks(10) // Tentar exibir 10 datas
+      .tickFormat(d => formatDate(d))) // Formatar as datas usando a função customizada
+    .selectAll("text")
+    .attr("transform", "rotate(45)") // Rotacionar os rótulos para 45 graus
+    .style("text-anchor", "start"); // Ancorar o texto para que a rotação seja visualmente correta
 
   // Chamar a função drawYAxis para configurar o eixo Y do gráfico de dispersão
   drawYAxis(scatterSvg, scatterYScale);
