@@ -267,10 +267,10 @@ const formatDate = (dateStr) => {
 // Função principal para desenhar as visualizações
 const drawViz = (message) => {
 
-  const margin = { left: 60, right: 20, top: 20, bottom: 40 };
+  const margin = { left: 100, right: 10, top: 20, bottom: 20 };
 
-  const height = dscc.getHeight();
-  const width = dscc.getWidth();
+  const height = dscc.getHeight() - margin.top - margin.bottom;
+  const width = dscc.getWidth() - margin.left - margin.right;
 
   const barChartHeight = height * 0.35 - margin.top - margin.bottom;  // 35% para o gráfico de barras
   const scatterChartHeight = height * 0.65 - margin.top - margin.bottom;  // 65% para o gráfico de dispersão
@@ -299,7 +299,9 @@ const drawViz = (message) => {
   // Adicionar eixos ao gráfico de barras
   barSvg.append("g")
     .attr("transform", `translate(0, 0)`)
-    .call(d3.axisTop(barXScale).tickFormat(""));
+    .call(d3.axisTop(barXScale)
+      .tickFormat("")
+        .tickSize(0));
 
   barSvg.append("g")
     .call(d3.axisLeft(barYScale));
@@ -315,15 +317,16 @@ const drawViz = (message) => {
   // Desenhar o gráfico de dispersão usando os dados filtrados
   drawScatter(scatterSvg, filteredData, scatterXScale, scatterYScale, message);
 
+  // Filtrar as datas para mostrar apenas algumas
+  const filteredDates = scatterXScale.domain().filter((d, i) => i % Math.ceil(scatterXScale.domain().length / 10) === 0);
+
   // Adicionar eixos ao gráfico de dispersão
   scatterSvg.append("g")
     .attr("transform", `translate(0, ${scatterChartHeight})`)
     .call(d3.axisBottom(scatterXScale)
-      .ticks(10) // Tentar exibir 10 datas
+      .tickValues(filteredDates) // Mostrar apenas as datas filtradas
       .tickFormat(d => formatDate(d))) // Formatar as datas usando a função customizada
     .selectAll("text")
-    .attr("transform", "rotate(45)") // Rotacionar os rótulos para 45 graus
-    .style("text-anchor", "start"); // Ancorar o texto para que a rotação seja visualmente correta
 
   // Chamar a função drawYAxis para configurar o eixo Y do gráfico de dispersão
   drawYAxis(scatterSvg, scatterYScale);
