@@ -164,13 +164,15 @@ const drawYAxis = (svg, yScale) => {
   svg.append("g")
     .call(d3.axisLeft(yScale)
       .ticks(5)
-      .tickFormat(autoFormat(yScale))) // Usar formatação automática
+      .tickFormat(autoFormat(yScale))
+      .tickSize(0)
+      .tickPadding(10)) // Usar formatação automática
     .attr("transform", `translate(0, 0)`);
 };
 
 // Função para desenhar o gráfico de barras (precipitação de chuva)
 const drawBars = (svg, data, xScale, yScale, chartHeight, barColor, message) => {
-  svg.selectAll("rect")
+  const bars = svg.selectAll("rect")
     .data(data)
     .enter()
     .append("rect")
@@ -179,20 +181,57 @@ const drawBars = (svg, data, xScale, yScale, chartHeight, barColor, message) => 
     .attr("width", xScale.bandwidth())
     .attr("height", d => yScale(d.metric[0]))  // Crescimento para baixo
     .attr("fill", barColor)
-    .on("click", (event, d) => click(d, message))  // Adicionar comportamento de clique
-    .on("mouseover", function (event, d) {
+    .attr("stroke-width", 0)  // Sem contorno inicial
+    .on("click", (event, d) => click(d, message));
+
+  // Evento de mousemove no contêiner SVG para encontrar a barra mais próxima do mouse
+  svg.on("mousemove", function (event) {
+    const [mouseX] = d3.pointer(event);
+    
+    // Encontrar a barra mais próxima do mouse
+    let closestBar = null;
+    let minDistance = Infinity;
+
+    bars.each(function (d) {
+      const barX = parseFloat(d3.select(this).attr("x")) + xScale.bandwidth() / 2; // Ponto central da barra
+      const distance = Math.abs(barX - mouseX);
+
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestBar = this;
+      }
+    });
+
+    // Destacar a barra mais próxima
+    if (closestBar) {
+      d3.select(closestBar)
+        .raise()
+        .attr("stroke", "black")
+        .attr("stroke-width", 2)
+        .attr("stroke-opacity", 0.5)
+        .attr("width", xScale.bandwidth() + 4)
+        .attr("x", d => xScale(d.temporalDimension[0]) - 2);
+
+      // Mostrar a tooltip
+      const d = d3.select(closestBar).data()[0];
       tooltip
-        .html(buildTooltip(d, message.fields, "barras"))  // Atualizar tooltip para gráfico de barras
-        .style("opacity", 1);
-    })
-    .on("mousemove", function (event) {
-      tooltip
+        .html(buildTooltip(d, message.fields, "barras"))
+        .style("opacity", 1)
         .style("left", (event.pageX + 10) + "px")
         .style("top", (event.pageY - 28) + "px");
-    })
-    .on("mouseout", function () {
-      tooltip.style("opacity", 0);
-    });
+    }
+  })
+  .on("mouseout", function () {
+    // Restaurar todas as barras ao estilo original
+    bars
+      .attr("stroke", "none")
+      .attr("stroke-width", 0)
+      .attr("width", xScale.bandwidth())
+      .attr("x", d => xScale(d.temporalDimension[0]));
+
+    // Ocultar a tooltip
+    tooltip.style("opacity", 0);
+  });
 };
 
 // Função para desenhar o gráfico de dispersão
@@ -267,7 +306,7 @@ const formatDate = (dateStr) => {
 // Função principal para desenhar as visualizações
 const drawViz = (message) => {
 
-  const margin = { left: 100, right: 10, top: 20, bottom: 20 };
+  const margin = { left: 80, right: 10, top: 20, bottom: 20 };
 
   const height = dscc.getHeight() - margin.top - margin.bottom;
   const width = dscc.getWidth() - margin.left - margin.right;
@@ -301,10 +340,13 @@ const drawViz = (message) => {
     .attr("transform", `translate(0, 0)`)
     .call(d3.axisTop(barXScale)
       .tickFormat("")
-        .tickSize(0));
+      .tickSize(0));
 
   barSvg.append("g")
-    .call(d3.axisLeft(barYScale));
+    .call(d3.axisLeft(barYScale)
+      .ticks(5)
+      .tickSize(0)
+      .tickPadding(10));
 
   // Dados e escalas para o gráfico de dispersão (concentração de agrotóxicos)
   const scatterData = message.tables.DEFAULT;
@@ -325,7 +367,9 @@ const drawViz = (message) => {
     .attr("transform", `translate(0, ${scatterChartHeight})`)
     .call(d3.axisBottom(scatterXScale)
       .tickValues(filteredDates) // Mostrar apenas as datas filtradas
-      .tickFormat(d => formatDate(d))) // Formatar as datas usando a função customizada
+      .tickFormat(d => formatDate(d))
+      .tickSize(0)
+      .tickPadding(10)) // Formatar as datas usando a função customizada
     .selectAll("text")
 
   // Chamar a função drawYAxis para configurar o eixo Y do gráfico de dispersão

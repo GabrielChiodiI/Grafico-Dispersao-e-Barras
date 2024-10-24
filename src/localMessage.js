@@ -81259,7 +81259,7 @@ export const message = {
   },
   "style": {
     "zoom": {
-      "value": false,
+      "value": true,
       "defaultValue": false
     },
     "scrollBar": {
