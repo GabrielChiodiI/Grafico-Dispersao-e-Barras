@@ -322,7 +322,8 @@ const drawViz = (message) => {
   const svg = d3.select("body")
     .append("svg")
     .attr("width", width)
-    .attr("height", height);
+    .attr("height", height)
+    //call(zoom);
 
   // Dados e escalas para o gráfico de barras (precipitação de chuva)
   const barData = message.tables.DEFAULT;
