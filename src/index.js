@@ -5,6 +5,60 @@ const local = require('./localMessage.js');
 // Definir se estamos em desenvolvimento local
 export const LOCAL = true;
 
+// Função para formatar a data de 'YYYYMMDD' para 'DD/MM/YYYY'
+const formatDate = (dateStr) => {
+  const year = dateStr.substring(0, 4);
+  const month = dateStr.substring(4, 6);
+  const day = dateStr.substring(6, 8);
+  return `${day}/${month}/${year}`;
+};
+
+// Função para formatar dinamicamente os rótulos do eixo Y
+const autoFormat = (yScale) => {
+  const maxValue = yScale.domain()[1]; // Valor máximo da escala Y
+
+  if (maxValue >= 1) {
+    // Se o valor máximo for maior ou igual a 1, usar 2 casas decimais
+    return d3.format(".2f");
+  } else {
+    // Caso contrário, ajustar o número de casas decimais dinamicamente
+    const precision = Math.ceil(-Math.log10(maxValue)) + 2;
+    return d3.format(`.${precision}f`);
+  }
+};
+
+// Função para calcular os filtros de dispersão
+const getScatterFilters = (message) => {
+  // Verifica se o valor foi configurado e não é undefined
+  const scatterFilter2 = message.style.scatterFilter2.value !== undefined
+    ? parseFloat(message.style.scatterFilter2.value)
+    : (message.style.scatterFilter2.defaultValue !== undefined
+        ? parseFloat(message.style.scatterFilter2.defaultValue)
+        : -Infinity);
+
+  const scatterFilter1 = message.style.scatterFilter1.value !== undefined
+    ? parseFloat(message.style.scatterFilter1.value)
+    : (message.style.scatterFilter1.defaultValue !== undefined
+        ? parseFloat(message.style.scatterFilter1.defaultValue)
+        : Infinity);
+
+  return { scatterFilter1, scatterFilter2 };
+};
+
+// Função para construir a tooltip
+const buildTooltip = (d, fields, chartType) => {
+  const temporalDim = `Data: ${d.temporalDimension[0]}`;  // Usar temporalDimension para exibir a data
+  if (chartType === "barras") {
+    const met = `Precipitação: ${d.metric[0]}`;  // Usar metric para exibir a precipitação
+    return `${temporalDim}<br> ${met}`;
+  } else if (chartType === "dispersao") {
+    const metX = `Agrotóxico: ${d.metric2[0]}`;  // metric2 para exibir o tipo de agrotóxico
+    const metY = `Concentração: ${d.metric1[0]}`;  // metric1 para exibir a concentração de agrotóxico
+    return `${temporalDim}<br> ${metX}<br> ${metY}`;
+  }
+  return temporalDim;
+};
+
 // Criar a div da tooltip no corpo do documento
 const tooltip = d3.select("body")
   .append("div")
@@ -68,118 +122,22 @@ function click(d, message) {
   }
 }
 
-// Função para construir a tooltip
-const buildTooltip = (d, fields, chartType) => {
-  const temporalDim = `Data: ${d.temporalDimension[0]}`;  // Usar temporalDimension para exibir a data
-  if (chartType === "barras") {
-    const met = `Precipitação: ${d.metric[0]}`;  // Usar metric para exibir a precipitação
-    return `${temporalDim}<br> ${met}`;
-  } else if (chartType === "dispersao") {
-    const metX = `Agrotóxico: ${d.metric2[0]}`;  // metric2 para exibir o tipo de agrotóxico
-    const metY = `Concentração: ${d.metric1[0]}`;  // metric1 para exibir a concentração de agrotóxico
-    return `${temporalDim}<br> ${metX}<br> ${metY}`;
-  }
-  return temporalDim;
-};
-
-// Função para criar escalas X e Y para o gráfico de barras
-const createBarScales = (data, chartWidth, chartHeight) => {
-  const xScale = d3.scaleBand()
-    .domain(data.map(d => d.temporalDimension[0]))
-    .range([0, chartWidth])
-    .padding(0.2);
-
-  const yScale = d3.scaleLinear()
-    .domain([0, d3.max(data.map(d => d.metric[0]))])
-    .range([0, chartHeight]);  // Inverter Y para que as barras cresçam de cima para baixo
-
-  return { xScale, yScale };
-};
-
-// Função para calcular os filtros de dispersão
-const getScatterFilters = (message) => {
-  // Verifica se o valor foi configurado e não é undefined
-  const scatterFilter2 = message.style.scatterFilter2.value !== undefined
-    ? parseFloat(message.style.scatterFilter2.value)
-    : (message.style.scatterFilter2.defaultValue !== undefined
-        ? parseFloat(message.style.scatterFilter2.defaultValue)
-        : -Infinity);
-
-  const scatterFilter1 = message.style.scatterFilter1.value !== undefined
-    ? parseFloat(message.style.scatterFilter1.value)
-    : (message.style.scatterFilter1.defaultValue !== undefined
-        ? parseFloat(message.style.scatterFilter1.defaultValue)
-        : Infinity);
-
-  return { scatterFilter1, scatterFilter2 };
-};
-
-// Função para criar escalas X e Y para o gráfico de dispersão
-const createScatterScales = (data, chartWidth, chartHeight, message) => {
-  const { scatterFilter1, scatterFilter2 } = getScatterFilters(message);
-  
-  // Filtrar os dados para manter apenas os valores dentro dos limites configurados
-  const filteredData = data.filter(d => {
-    const metricValue = d.metric1[0];
-    return metricValue >= scatterFilter2 && metricValue <= scatterFilter1;
-
-  });
-
-  // Identificar a significância e arredondar os valores máximo e mínimo
-  const maxDataValue = d3.max(filteredData, d => d.metric1[0]);
-  const minDataValue = d3.min(filteredData, d => d.metric1[0]);
-
-  const padding = (maxDataValue - minDataValue) * 0.01;
-
-  // Criar a escala Y partindo do valor mínimo arredondado até o máximo arredondado
-  const yScale = d3.scaleLinear()
-    .domain([minDataValue - padding, maxDataValue + padding])
-    .range([chartHeight, 0]);
-
-  // Criar a escala X
-  const xScale = d3.scaleBand()
-    .domain(data.map(d => d.temporalDimension[0]))
-    .range([0, chartWidth])
-    .padding(0.2);
-
-  return { xScale, yScale, filteredData };
-};
-
-// Função para formatar dinamicamente os rótulos do eixo Y
-const autoFormat = (yScale) => {
-  const maxValue = yScale.domain()[1]; // Valor máximo da escala Y
-
-  if (maxValue >= 1) {
-    // Se o valor máximo for maior ou igual a 1, usar 2 casas decimais
-    return d3.format(".2f");
-  } else {
-    // Caso contrário, ajustar o número de casas decimais dinamicamente
-    const precision = Math.ceil(-Math.log10(maxValue)) + 2;
-    return d3.format(`.${precision}f`);
-  }
-};
-
-// Função para desenhar os eixos Y com intervalos de 20% do valor arredondado
-const drawYAxis = (svg, yScale) => {
-  svg.append("g")
-    .call(d3.axisLeft(yScale)
-      .ticks(5)
-      .tickFormat(autoFormat(yScale))
-      .tickSize(0)
-      .tickPadding(10)) // Usar formatação automática
-    .attr("transform", `translate(0, 0)`);
+// Escala X Linear baseada em índices dos dados
+const createLinearXScale = (data, chartWidth) => {
+  return d3.scaleLinear()
+    .domain([0, data.length - 1]) // índice dos dados para uma escala contínua
+    .range([0, chartWidth]);
 };
 
 // Função para desenhar o gráfico de barras (precipitação de chuva)
-const drawBars = (svg, data, xScale, yScale, chartHeight, barColor, message) => {
+const drawBars = (svg, data, xScale, yScale, chartWidth, barColor, message) => {
   const bars = svg.selectAll("rect")
     .data(data)
-    .enter()
-    .append("rect")
-    .attr("x", d => xScale(d.temporalDimension[0]))
+    .join("rect")
+    .attr("x", (d, i) => xScale(i))
     .attr("y", 0)  // Inicia no topo
-    .attr("width", xScale.bandwidth())
-    .attr("height", d => yScale(d.metric[0]))  // Crescimento para baixo
+    .attr("width", chartWidth / barData.length * 0.8)  // Ajusta o espaçamento entre as barras
+    .attr("height", d => yScale(d.metric[0])) 
     .attr("fill", barColor)
     .attr("stroke-width", 0)  // Sem contorno inicial
     .on("click", (event, d) => click(d, message));
@@ -232,6 +190,37 @@ const drawBars = (svg, data, xScale, yScale, chartHeight, barColor, message) => 
     // Ocultar a tooltip
     tooltip.style("opacity", 0);
   });
+};
+
+// Função para criar escalas X e Y para o gráfico de dispersão
+const createScatterScales = (data, chartWidth, chartHeight, message) => {
+  const { scatterFilter1, scatterFilter2 } = getScatterFilters(message);
+  
+  // Filtrar os dados para manter apenas os valores dentro dos limites configurados
+  const filteredData = data.filter(d => {
+    const metricValue = d.metric1[0];
+    return metricValue >= scatterFilter2 && metricValue <= scatterFilter1;
+
+  });
+
+  // Identificar a significância e arredondar os valores máximo e mínimo
+  const maxDataValue = d3.max(filteredData, d => d.metric1[0]);
+  const minDataValue = d3.min(filteredData, d => d.metric1[0]);
+
+  const padding = (maxDataValue - minDataValue) * 0.01;
+
+  // Criar a escala Y partindo do valor mínimo arredondado até o máximo arredondado
+  const yScale = d3.scaleLinear()
+    .domain([minDataValue - padding, maxDataValue + padding])
+    .range([chartHeight, 0]);
+
+  // Criar a escala X
+  const xScale = d3.scaleBand()
+    .domain(data.map(d => d.temporalDimension[0]))
+    .range([0, chartWidth])
+    .padding(0.2);
+
+  return { xScale, yScale, filteredData };
 };
 
 // Função para desenhar o gráfico de dispersão
@@ -295,86 +284,92 @@ const drawScatter = (svg, filteredData, xScale, yScale, message) => {
   });
 };
 
-// Função para formatar a data de 'YYYYMMDD' para 'DD/MM/YYYY'
-const formatDate = (dateStr) => {
-  const year = dateStr.substring(0, 4);
-  const month = dateStr.substring(4, 6);
-  const day = dateStr.substring(6, 8);
-  return `${day}/${month}/${year}`;
-};
-
 // Função principal para desenhar as visualizações
 const drawViz = (message) => {
-
+  // Configurações de margem e dimensões
   const margin = { left: 80, right: 10, top: 20, bottom: 20 };
-
   const height = dscc.getHeight() - margin.top - margin.bottom;
   const width = dscc.getWidth() - margin.left - margin.right;
 
-  const barChartHeight = height * 0.35 - margin.top - margin.bottom;  // 35% para o gráfico de barras
-  const scatterChartHeight = height * 0.65 - margin.top - margin.bottom;  // 65% para o gráfico de dispersão
+  // Dimensões para os gráficos de barras e dispersão
+  const barChartHeight = height * 0.35 - margin.top - margin.bottom; // 35% para o gráfico de barras
+  const scatterChartHeight = height * 0.65 - margin.top - margin.bottom; // 65% para o gráfico de dispersão
   const chartWidth = width - margin.left - margin.right;
 
   // Limpar qualquer gráfico SVG existente
   d3.select("body").selectAll("svg").remove();
 
-  // Criar o SVG geral
+  // Criar o SVG principal
   const svg = d3.select("body")
     .append("svg")
     .attr("width", width)
-    .attr("height", height)
-    //call(zoom);
+    .attr("height", height);
 
   // Dados e escalas para o gráfico de barras (precipitação de chuva)
   const barData = message.tables.DEFAULT;
-  const { xScale: barXScale, yScale: barYScale } = createBarScales(barData, chartWidth, barChartHeight);
+  const xScale = createLinearXScale(barData, chartWidth);
+  const barYScale = d3.scaleLinear()
+    .domain([0, d3.max(barData.map(d => d.metric[0]))])
+    .range([barChartHeight, 0]);
   const barColor = styleVal(message, "barColor");
 
-  // Adicionar o gráfico de barras na parte superior
+  // Adicionar o grupo para o gráfico de barras
   const barSvg = svg.append("g")
     .attr("transform", `translate(${margin.left}, ${margin.top})`);
-
-  drawBars(barSvg, barData, barXScale, barYScale, barChartHeight, barColor, message);
+  
+  // Desenhar o gráfico de barras
+  drawBars(barSvg, barData, xScale, barYScale, chartWidth, barColor, message);
 
   // Adicionar eixos ao gráfico de barras
-  barSvg.append("g")
-    .attr("transform", `translate(0, 0)`)
-    .call(d3.axisTop(barXScale)
-      .tickFormat("")
-      .tickSize(0));
+  const barXAxis = barSvg.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", `translate(0, ${barChartHeight})`)
+    .call(d3.axisBottom(xScale)
+      .ticks(Math.min(barData.length, 10))
+      .tickFormat((d) => barData[Math.round(d)] ? barData[Math.round(d)].temporalDimension[0] : "")
+    )
+    .selectAll("text")
+    .style("text-anchor", "end")
+    .attr("dx", "-0.8em")
+    .attr("dy", "0.15em")
+    .attr("transform", "rotate(-45)");
 
   barSvg.append("g")
-    .call(d3.axisLeft(barYScale)
-      .ticks(5)
-      .tickSize(0)
-      .tickPadding(10));
+    .call(d3.axisLeft(barYScale).ticks(5).tickSize(0).tickPadding(10));
 
   // Dados e escalas para o gráfico de dispersão (concentração de agrotóxicos)
   const scatterData = message.tables.DEFAULT;
   const { xScale: scatterXScale, yScale: scatterYScale, filteredData } = createScatterScales(scatterData, chartWidth, scatterChartHeight, message);
 
-  // Adicionar o gráfico de dispersão na parte inferior
+  // Adicionar o grupo para o gráfico de dispersão
   const scatterSvg = svg.append("g")
     .attr("transform", `translate(${margin.left}, ${margin.top + barChartHeight + margin.bottom})`);
-
-  // Desenhar o gráfico de dispersão usando os dados filtrados
+  
+  // Desenhar o gráfico de dispersão
   drawScatter(scatterSvg, filteredData, scatterXScale, scatterYScale, message);
 
-  // Filtrar as datas para mostrar apenas algumas
+  // Filtrar as datas para exibir apenas algumas
   const filteredDates = scatterXScale.domain().filter((d, i) => i % Math.ceil(scatterXScale.domain().length / 10) === 0);
 
-  // Adicionar eixos ao gráfico de dispersão
+  // Adicionar eixo X ao gráfico de dispersão
   scatterSvg.append("g")
     .attr("transform", `translate(0, ${scatterChartHeight})`)
-    .call(d3.axisBottom(scatterXScale)
-      .tickValues(filteredDates) // Mostrar apenas as datas filtradas
-      .tickFormat(d => formatDate(d))
-      .tickSize(0)
-      .tickPadding(10)) // Formatar as datas usando a função customizada
-    .selectAll("text")
+    .call(
+      d3.axisBottom(scatterXScale)
+        .tickValues(filteredDates)
+        .tickFormat(d => formatDate(d))
+        .tickSize(0)
+        .tickPadding(10)
+    )
+    .selectAll("text");
 
-  // Chamar a função drawYAxis para configurar o eixo Y do gráfico de dispersão
-  drawYAxis(scatterSvg, scatterYScale);
+  scatterSvg.append("g")
+    .call(d3.axisLeft(scatterYScale)
+      .ticks(5)
+      .tickFormat(autoFormat(scatterYScale))
+      .tickSize(0)
+      .tickPadding(10)) // Usar formatação automática
+    .attr("transform", `translate(0, 0)`);
 };
 
 // Renderizar localmente ou no Google Data Studio
