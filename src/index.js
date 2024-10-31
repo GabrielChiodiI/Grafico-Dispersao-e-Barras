@@ -3,15 +3,7 @@ const dscc = require('@google/dscc');
 const local = require('./localMessage.js');
 
 // Definir se estamos em desenvolvimento local
-export const LOCAL = true;
-
-// Função para formatar a data de 'YYYYMMDD' para 'DD/MM/YYYY'
-const formatDate = (dateStr) => {
-  const year = dateStr.substring(0, 4);
-  const month = dateStr.substring(4, 6);
-  const day = dateStr.substring(6, 8);
-  return `${day}/${month}/${year}`;
-};
+export const LOCAL = false;
 
 // Função para formatar dinamicamente os rótulos do eixo Y
 const autoFormat = (yScale) => {
@@ -297,6 +289,7 @@ const drawViz = (message) => {
     temporalDimension: parseDate(d.temporalDimension[0])
   }));
   const xScale = createTimeXScale(data, chartWidth);
+  console.log("dados", data.tempo);
 
   // Limpar qualquer gráfico SVG existente
   d3.select("body").selectAll("svg").remove();
@@ -320,7 +313,7 @@ const drawViz = (message) => {
   drawBars(barSvg, data, xScale, barYScale, chartWidth, barColor, message);
 
   // Adicionar eixos ao gráfico de barras
-  const barXAxis = barSvg.append("g")
+  barSvg.append("g")
     .attr("class", "x-axis")
     .attr("transform", `translate(0, 0)`)
     .call(d3.axisTop(xScale)
@@ -341,17 +334,13 @@ const drawViz = (message) => {
   // Desenhar o gráfico de dispersão
   drawScatter(scatterSvg, filteredData, xScale, scatterYScale, message);
 
-  // Filtrar as datas para exibir apenas algumas
-  //const filteredDates = scatterXScale.domain().filter((d, i) => i % Math.ceil(scatterXScale.domain().length / 10) === 0);
-
   // Adicionar eixo X ao gráfico de dispersão
-  const scatterXAxis = scatterSvg.append("g")
+  scatterSvg.append("g")
     .attr("class", "x-axis")
     .attr("transform", `translate(0, ${scatterChartHeight})`)
     .call(
       d3.axisBottom(xScale)
-        .tickValues(Math.min(data.length, 10))
-        .tickFormat(d3.timeFormat("%Y-%m-%d"))
+        .tickFormat(d3.timeFormat("%d/%m/%Y"))
         .tickSize(0)
         .tickPadding(10)
     )
@@ -386,8 +375,8 @@ const drawViz = (message) => {
 
       scatterSvg.select(".x-axis")
         .call(d3.axisBottom(newXScale)
-          .ticks(Math.min(scatterData.length, 10))
-          .tickFormat((d) => scatterData[Math.round(d)] ? scatterData[Math.round(d)].temporalDimension[0] : "")
+          .ticks(Math.min(data.length, 10))
+          .tickFormat(d3.timeFormat("%d/%m/%Y"))
         );
     });
 
