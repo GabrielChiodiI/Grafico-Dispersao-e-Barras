@@ -3,7 +3,7 @@ const dscc = require('@google/dscc');
 const local = require('./localMessage.js');
 
 // Definir se estamos em desenvolvimento local
-export const LOCAL = false;
+export const LOCAL = true;
 
 // Função para formatar dinamicamente os rótulos do eixo Y
 const autoFormat = (yScale) => {
@@ -112,7 +112,7 @@ function click(d, message) {
   } else {
     dscc.clearInteraction(actionId, FILTER);
   }
-}
+};
 
 // Escala X Linear baseada em índices dos dados
 const createTimeXScale = (data, chartWidth) => {
@@ -128,60 +128,10 @@ const drawBars = (svg, data, xScale, yScale, chartWidth, barColor, message) => {
     .join("rect")
     .attr("x", d => xScale(d.temporalDimension))
     .attr("y", 0)  // Inicia no topo
-    .attr("width", chartWidth / data.length * 0.8)  // Ajusta o espaçamento entre as barras
+    .attr("width",  chartWidth / data.length * 0.8)  // Ajusta o espaçamento entre as barras
     .attr("height", d => yScale(d.metric[0])) 
     .attr("fill", barColor)
-    .attr("stroke-width", 0)  // Sem contorno inicial
-    .on("click", (event, d) => click(d, message));
-
-  // Evento de mousemove no contêiner SVG para encontrar a barra mais próxima do mouse
-  svg.on("mousemove", function (event) {
-    const [mouseX] = d3.pointer(event);
-    
-    // Encontrar a barra mais próxima do mouse
-    let closestBar = null;
-    let minDistance = Infinity;
-
-    bars.each(function (d) {
-      const barX = parseFloat(d3.select(this).attr("x")) + xScale.bandwidth() / 2; // Ponto central da barra
-      const distance = Math.abs(barX - mouseX);
-
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestBar = this;
-      }
-    });
-
-    // Destacar a barra mais próxima
-    if (closestBar) {
-      d3.select(closestBar)
-        .raise()
-        .attr("stroke", "black")
-        .attr("stroke-width", 2)
-        .attr("stroke-opacity", 0.5)
-        .attr("width", xScale.bandwidth() + 4)
-        .attr("x", d => xScale(d.temporalDimension[0]) - 2);
-
-      // Mostrar a tooltip
-      const d = d3.select(closestBar).data()[0];
-      tooltip
-        .html(buildTooltip(d, message.fields, "barras"))
-        .style("opacity", 1)
-        .style("left", (event.pageX + 10) + "px")
-        .style("top", (event.pageY - 28) + "px");
-    }
-  })
-  .on("mouseout", function () {
-    // Restaurar todas as barras ao estilo original
-    bars
-      .attr("stroke", "none")
-      .attr("stroke-width", 0)
-      .attr("width", xScale.bandwidth())
-      .attr("x", d => xScale(d.temporalDimension[0]));
-
-    // Ocultar a tooltip
-    tooltip.style("opacity", 0);
-  });
+    .attr("stroke-width", 0);
 };
 
 // Função para criar escalas X e Y para o gráfico de dispersão
@@ -226,47 +176,7 @@ const drawScatter = (svg, filteredData, xScale, yScale, message) => {
     .attr("cx", d => xScale(d.temporalDimension))
     .attr("cy", d => applyJitter(yScale(d.metric1[0]))) // Aplicar jitter ao valor Y
     .attr("r", 5)
-    .attr("fill", d => colorScale(d.metric2[0]))
-    .on("click", (event, d) => click(d, message))
-    .on("mouseover", function (event, d) {
-      // Mostrar a tooltip ao passar o mouse sobre o ponto
-      tooltip.html(buildTooltip(d, message.fields, "dispersao")).style("opacity", 1);
-      d3.select(this).raise().attr("r", 7); // Destacar o ponto trazendo-o para frente e aumentando o raio
-    })
-    .on("mousemove", function (event) {
-      // Atualizar a posição da tooltip conforme o mouse se move
-      tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 28) + "px");
-    })
-    .on("mouseout", function () {
-      // Ocultar a tooltip quando o mouse sai do ponto
-      tooltip.style("opacity", 0);
-      d3.select(this).attr("r", 5); // Restaurar o raio original do ponto
-    });
-
-  // Evento de mousemove no contêiner SVG para trazer o ponto mais próximo para frente
-  svg.on("mousemove", function (event) {
-    const [mouseX, mouseY] = d3.pointer(event);
-
-    // Encontrar o círculo mais próximo do mouse
-    let closestCircle = null;
-    let minDistance = Infinity;
-
-    circles.each(function () {
-      const cx = parseFloat(d3.select(this).attr("cx"));
-      const cy = parseFloat(d3.select(this).attr("cy"));
-      const distance = Math.sqrt(Math.pow(cx - mouseX, 2) + Math.pow(cy - mouseY, 2));
-
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestCircle = this;
-      }
-    });
-
-    // Trazer o círculo mais próximo para frente
-    if (closestCircle) {
-      d3.select(closestCircle).raise();
-    }
-  });
+    .attr("fill", d => colorScale(d.metric2[0]));
 };
 
 // Função principal para desenhar as visualizações
@@ -289,8 +199,7 @@ const drawViz = (message) => {
     temporalDimension: parseDate(d.temporalDimension[0])
   }));
   const xScale = createTimeXScale(data, chartWidth);
-  console.log("dados", data.tempo);
-
+  
   // Limpar qualquer gráfico SVG existente
   d3.select("body").selectAll("svg").remove();
 
@@ -314,7 +223,6 @@ const drawViz = (message) => {
 
   // Adicionar eixos ao gráfico de barras
   barSvg.append("g")
-    .attr("class", "x-axis")
     .attr("transform", `translate(0, 0)`)
     .call(d3.axisTop(xScale)
       .tickFormat("")
