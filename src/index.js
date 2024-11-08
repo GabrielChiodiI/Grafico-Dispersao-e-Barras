@@ -3,7 +3,7 @@ const dscc = require('@google/dscc');
 const local = require('./localMessage.js');
 
 // Definir se estamos em desenvolvimento local
-export const LOCAL = true;
+export const LOCAL = false;
 
 // Função para formatar dinamicamente os rótulos do eixo Y
 const autoFormat = (yScale) => {
@@ -142,7 +142,9 @@ const createTimeXScale = (data, chartWidth) => {
 };
 
 // Função para desenhar o gráfico de barras (precipitação de chuva)
-const drawBars = (svg, data, xScale, yScale, chartHeight, chartWidth, barColor, message) => {
+const drawBars = (svg, data, xScale, yScale, chartWidth, message) => {
+    const barColor = styleVal(message, "barColor");
+
     // Calcula a largura da barra baseada na escala atual
     const barWidth = () => {
         const step = chartWidth / data.length;
@@ -207,7 +209,7 @@ const createScatterScales = (data, chartHeight, message) => {
 
     const maxDataValue = d3.max(filteredData, d => d.metric1[0]);
     const minDataValue = d3.min(filteredData, d => d.metric1[0]);
-    const padding = (maxDataValue - minDataValue) * 0.01;
+    const padding = (maxDataValue - minDataValue) * 0.016;
 
     const yScale = d3.scaleLinear()
         .domain([minDataValue - padding, maxDataValue + padding])
@@ -218,8 +220,7 @@ const createScatterScales = (data, chartHeight, message) => {
 
 // Função para desenhar o gráfico de dispersão (atualizada com tooltip)
 const drawScatter = (svg, filteredData, xScale, yScale, message) => {
-    const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
-        .domain(filteredData.map(d => d.metric2[0]));
+    const scatterColor = styleVal(message, "scatterColor");
     
     const showNulls = (message.style.scatterFilter3.value === "true") ||
         (message.style.scatterFilter3.defaultValue === "true");
@@ -234,8 +235,7 @@ const drawScatter = (svg, filteredData, xScale, yScale, message) => {
         .attr("cx", d => xScale(d.temporalDimension))
         .attr("cy", d => applyJitter(yScale(d.metric1[0])))
         .attr("r", 5)
-        .attr("fill", d => colorScale(d.metric2[0]))
-        .attr("stroke-width", "none")
+        .attr("fill", scatterColor)
         .on("mouseover", function(event, d) {
             // Aumenta o ponto e traz para frente
             d3.select(this)
@@ -243,7 +243,7 @@ const drawScatter = (svg, filteredData, xScale, yScale, message) => {
                 .transition()
                 .duration(200)
                 .attr("r", 7)
-                .style("stroke", "#000")  //color.stroke none
+                .style("stroke", "#000")
                 .style("stroke-width", 2);
             
             // Mostra a tooltip
@@ -264,7 +264,8 @@ const drawScatter = (svg, filteredData, xScale, yScale, message) => {
             d3.select(this)
                 .transition()
                 .duration(200)
-                .attr("r", 5);
+                .attr("r", 5)
+                .style("stroke", "none");
             
             // Esconde a tooltip
             tooltip.style("opacity", 0);
@@ -295,7 +296,7 @@ const drawScatter = (svg, filteredData, xScale, yScale, message) => {
 };
 
 const drawViz = (message) => {
-    const margin = { left: 80, right: 10, top: 20, bottom: 20 };
+    const margin = { left: 80, right: 20, top: 20, bottom: 30 };
     const height = dscc.getHeight() - margin.top - margin.bottom;
     const width = dscc.getWidth() - margin.left - margin.right;
     const barChartHeight = height * 0.35 - margin.top - margin.bottom;
@@ -335,9 +336,6 @@ const drawViz = (message) => {
     const barYScale = d3.scaleLinear()
         .domain([0, d3.max(data.map(d => d.metric[0]))])
         .range([0, barChartHeight]);
-    
-    // Garante que a cor da barra seja sólida
-    const barColor = styleVal(message, "barColor") || "#2196F3"; // Cor padrão caso não seja definida
 
     // Configurar o gráfico de barras com clipping
     const barSvg = svg.append("g")
@@ -348,7 +346,7 @@ const drawViz = (message) => {
         .attr("class", "chart-area")
         .attr("clip-path", "url(#bar-clip)");
 
-    drawBars(barSvg, data, xScale, barYScale, barChartHeight, chartWidth, barColor, message);
+    drawBars(barSvg, data, xScale, barYScale, chartWidth, message);
 
     // Adicionar eixos ao gráfico de barras
     barSvg.append("g")
@@ -372,6 +370,15 @@ const drawViz = (message) => {
         .attr("height", barChartHeight)
         .attr("fill", "#000000");
 
+    // Adicionar descrição do eixo Y para o gráfico de barras
+    barSvg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", -margin.left)
+        .attr("x", -barChartHeight / 2)
+        .attr("dy", "1em")
+        .style("text-anchor", "middle")
+        .text(message.style.labelBarY.value || message.fields.metric[0].name);
+
     const {yScale: scatterYScale, filteredData} = createScatterScales(data, scatterChartHeight, message);
 
     // Configurar o gráfico de dispersão com clipping
@@ -390,11 +397,13 @@ const drawViz = (message) => {
         .attr("class", "x-axis")
         .attr("transform", `translate(0, ${scatterChartHeight})`)
         .call(d3.axisBottom(xScale)
-            .ticks(10)
+            .ticks(20)
             .tickFormat(d3.timeFormat("%d/%m/%Y"))
             .tickSize(0)
-            .tickPadding(10))
-        .selectAll("text");
+            .tickPadding(5))
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("transform", "rotate(-15)");
 
     scatterSvg.append("g")
         .call(d3.axisLeft(scatterYScale)
@@ -411,13 +420,29 @@ const drawViz = (message) => {
         .attr("height", scatterChartHeight)
         .attr("fill", "#000000");
 
+    // Adicionar descrição do eixo X para o gráfico de dispersão
+    scatterSvg.append("text")
+        .attr("y", scatterChartHeight + margin.bottom + margin.top)
+        .attr("x", chartWidth / 2)
+        .style("text-anchor", "middle")
+        .text(message.style.labelScatterX.value || message.fields.temporalDimension[0].name);
+
+    // Adicionar descrição do eixo Y para o gráfico de dispersão
+    scatterSvg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", -margin.left)
+        .attr("x", -scatterChartHeight / 2)
+        .attr("dy", "1em")
+        .style("text-anchor", "middle")
+        .text(message.style.labelScatterY.value || message.fields.metric1[0].name);
+    
     const zoom = d3.zoom()
         .scaleExtent([1, 15])
         .translateExtent([[0, 0], [chartWidth, height]])
         .on("zoom", (event) => {
             const newXScale = event.transform.rescaleX(xScale);
 
-            drawBars(barSvg, data, newXScale, barYScale, barChartHeight, chartWidth, barColor, message);
+            drawBars(barSvg, data, newXScale, barYScale, chartWidth, message);
             drawScatter(scatterSvg, filteredData, newXScale, scatterYScale, message);
 
             barSvg.select(".x-axis")
@@ -429,9 +454,11 @@ const drawViz = (message) => {
                 .call(d3.axisBottom(newXScale)
                     .ticks(10)
                     .tickFormat(d3.timeFormat("%d/%m/%Y"))
-                    .ticks(10)
                     .tickSize(0)
-                    .tickPadding(10));
+                    .tickPadding(5))
+                .selectAll("text")
+                .style("text-anchor", "end")
+                .attr("transform", "rotate(-15)");
         });
 
     if (message.style.zoom.value == true || message.style.zoom.defaultValue == true) {

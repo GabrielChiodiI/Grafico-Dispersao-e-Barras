@@ -81266,15 +81266,24 @@ export const message = {
       "value": false,
       "defaultValue": false
     },
+    "labelBarY": {
+      "value": "Precipitação (mm)"
+    },
+    "labelScatterY": {},
+    "labelScatterX": {},
     "barPosition": {
       "value": "middle"
     },
     "barColor": {
-      "value": {
-        "color": "#1e555c"
-      },
+      "value": {},
       "defaultValue": {
-        "color": "#1e555c"
+        "color": "#1A73E8"
+      }
+    },
+    "scatterColor": {
+      "value": {},
+      "defaultValue": {
+        "color": "#FF7F0E"
       }
     },
     "scatterFilter1": {},

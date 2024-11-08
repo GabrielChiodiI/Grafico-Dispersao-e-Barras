@@ -91,6 +91,24 @@
               "value": "bottom"
             }
           ]
+        },
+        {
+          "id": "labelBarY",
+          "label": "Rótulo Y das barras",
+          "defaultValue": "",
+          "type": "TEXTINPUT"
+        },
+        {
+          "id": "labelScatterY",
+          "label": "Rótulo Y dos circulos",
+          "defaultValue": "",
+          "type": "TEXTINPUT"
+        },
+        {
+          "id": "labelScatterX",
+          "label": "Rótulo X",
+          "defaultValue": "",
+          "type": "TEXTINPUT"
         }
       ]
     },
@@ -103,7 +121,7 @@
           "label": "Cor das Barras",
           "type": "FILL_COLOR",
           "defaultValue": {
-            "color": "#1E555C"
+            "color": "#1A73E8"
           }
         }
       ]
@@ -112,6 +130,14 @@
       "id": "scatterStyling",
       "label": "Estilos do Gáfico de Dispersão",
       "elements": [
+        {
+          "id": "scatterColor",
+          "label": "Cor das Barras",
+          "type": "FILL_COLOR",
+          "defaultValue": {
+            "color": "#FF7F0E"
+          }
+        },
         {
           "id": "scatterFilter1",
           "label": "Valor máximo do eixo",
