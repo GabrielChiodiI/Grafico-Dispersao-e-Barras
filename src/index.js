@@ -296,12 +296,11 @@ const drawScatter = (svg, filteredData, xScale, yScale, message) => {
 };
 
 const drawViz = (message) => {
-    const margin = { left: 80, right: 20, top: 20, bottom: 30 };
+    const margin = { left: 80, right: 30, top: 30, bottom: 40 };
     const height = dscc.getHeight() - margin.top - margin.bottom;
     const width = dscc.getWidth() - margin.left - margin.right;
-    const barChartHeight = height * 0.35 - margin.top - margin.bottom;
-    const scatterChartHeight = height * 0.65 - margin.top - margin.bottom;
-    const chartWidth = width - margin.left - margin.right;
+    const barChartHeight = height * 0.35;
+    const scatterChartHeight = height * 0.65;
 
     const parseDate = d3.timeParse("%Y%m%d");
     const data = message.tables.DEFAULT.map(d => ({
@@ -309,28 +308,28 @@ const drawViz = (message) => {
         temporalDimension: parseDate(d.temporalDimension[0])
     }));
     
-    const xScale = createTimeXScale(data, chartWidth);
+    const xScale = createTimeXScale(data, width);
 
     d3.select("body").selectAll("svg").remove();
 
     const svg = d3.select("body")
         .append("svg")
-        .attr("width", width)
-        .attr("height", height);
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom);
 
     // Criar clip paths para ambos os gráficos
     svg.append("defs")
         .append("clipPath")
         .attr("id", "bar-clip")
         .append("rect")
-        .attr("width", chartWidth)
+        .attr("width", width)
         .attr("height", barChartHeight);
 
     svg.append("defs")
         .append("clipPath")
         .attr("id", "scatter-clip")
         .append("rect")
-        .attr("width", chartWidth)
+        .attr("width", width)
         .attr("height", scatterChartHeight);
 
     const barYScale = d3.scaleLinear()
@@ -346,7 +345,7 @@ const drawViz = (message) => {
         .attr("class", "chart-area")
         .attr("clip-path", "url(#bar-clip)");
 
-    drawBars(barSvg, data, xScale, barYScale, chartWidth, message);
+        drawBars(barSvg, data, xScale, barYScale, width, message);
 
     // Adicionar eixos ao gráfico de barras
     barSvg.append("g")
@@ -364,7 +363,7 @@ const drawViz = (message) => {
 
     // Borda no final do gráfico de barras
     barSvg.append("rect")
-        .attr("x", chartWidth - 1)
+        .attr("x", width - 1)
         .attr("y", 0)
         .attr("width", 1)
         .attr("height", barChartHeight)
@@ -373,17 +372,25 @@ const drawViz = (message) => {
     // Adicionar descrição do eixo Y para o gráfico de barras
     barSvg.append("text")
         .attr("transform", "rotate(-90)")
-        .attr("y", -margin.left)
+        .attr("y", -margin.left) // Adicionar um pequeno offset
         .attr("x", -barChartHeight / 2)
         .attr("dy", "1em")
         .style("text-anchor", "middle")
         .text(message.style.labelBarY.value || message.fields.metric[0].name);
 
+    /*barSvg.append("g")
+        .attr("class", "y-grid")
+        .call(d3.axisLeft(barYScale)
+            .ticks(5)
+            .tickSize(-width) // Define o comprimento da grade
+            .tickFormat("") // Remove os rótulos
+        );*/
+
     const {yScale: scatterYScale, filteredData} = createScatterScales(data, scatterChartHeight, message);
 
     // Configurar o gráfico de dispersão com clipping
     const scatterSvg = svg.append("g")
-        .attr("transform", `translate(${margin.left}, ${margin.top + barChartHeight + margin.bottom})`);
+        .attr("transform", `translate(${margin.left}, ${margin.top + barChartHeight})`);
 
     // Adicionar área com clip-path para os pontos
     scatterSvg.append("g")
@@ -414,7 +421,7 @@ const drawViz = (message) => {
         .attr("transform", `translate(0, 0)`);
 
     scatterSvg.append("rect")
-        .attr("x", chartWidth - 1)
+        .attr("x", width - 1)
         .attr("y", 0)
         .attr("width", 1)
         .attr("height", scatterChartHeight)
@@ -422,27 +429,47 @@ const drawViz = (message) => {
 
     // Adicionar descrição do eixo X para o gráfico de dispersão
     scatterSvg.append("text")
-        .attr("y", scatterChartHeight + margin.bottom + margin.top)
-        .attr("x", chartWidth / 2)
+        .attr("y", scatterChartHeight + margin.bottom) // Reduzir offset para evitar sobreposição
+        .attr("x", width / 2)
         .style("text-anchor", "middle")
         .text(message.style.labelScatterX.value || message.fields.temporalDimension[0].name);
 
     // Adicionar descrição do eixo Y para o gráfico de dispersão
     scatterSvg.append("text")
         .attr("transform", "rotate(-90)")
-        .attr("y", -margin.left)
+        .attr("y", -margin.left) // Adicionar um pequeno offset
         .attr("x", -scatterChartHeight / 2)
         .attr("dy", "1em")
         .style("text-anchor", "middle")
         .text(message.style.labelScatterY.value || message.fields.metric1[0].name);
     
+    /*// Grade horizontal (eixo Y)
+    scatterSvg.append("g")
+    .attr("class", "y-grid")
+    .call(d3.axisLeft(scatterYScale)
+        .ticks(5)
+        .tickSize(-width)
+        .tickFormat("") // Remove os rótulos
+    );
+
+    // Grade vertical (eixo X)
+    scatterSvg.append("g")
+    .attr("class", "x-grid")
+    .attr("transform", `translate(0, ${scatterChartHeight})`)
+    .call(d3.axisBottom(xScale)
+        .ticks(20)
+        .tickSize(-scatterChartHeight)
+        .tickFormat("") // Remove os rótulos
+    );*/
+    
     const zoom = d3.zoom()
         .scaleExtent([1, 15])
-        .translateExtent([[0, 0], [chartWidth, height]])
+        .translateExtent([[0, 0], [width, height]])
+        .extent([[0, 0], [width, height]])
         .on("zoom", (event) => {
             const newXScale = event.transform.rescaleX(xScale);
 
-            drawBars(barSvg, data, newXScale, barYScale, chartWidth, message);
+            drawBars(barSvg, data, newXScale, barYScale, width, message);
             drawScatter(scatterSvg, filteredData, newXScale, scatterYScale, message);
 
             barSvg.select(".x-axis")
