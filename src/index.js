@@ -3,7 +3,7 @@ const dscc = require('@google/dscc');
 const local = require('./localMessage.js');
 
 // Definir se estamos em desenvolvimento local
-export const LOCAL = false;
+export const LOCAL = true;
 
 // Função para formatar dinamicamente os rótulos do eixo Y
 const autoFormat = (yScale) => {
@@ -209,10 +209,9 @@ const createScatterScales = (data, chartHeight, message) => {
 
     const maxDataValue = d3.max(filteredData, d => d.metric1[0]);
     const minDataValue = d3.min(filteredData, d => d.metric1[0]);
-    const padding = (maxDataValue - minDataValue) * 0.016;
 
     const yScale = d3.scaleLinear()
-        .domain([minDataValue - padding, maxDataValue + padding])
+        .domain([minDataValue, maxDataValue])
         .range([chartHeight, 0]);
 
     return { yScale, filteredData };
@@ -296,9 +295,14 @@ const drawScatter = (svg, filteredData, xScale, yScale, message) => {
 };
 
 const drawViz = (message) => {
+
+    //Margens de segurança para evitar sobreposição dos gráficos e aparição de barras de rolagem
+    const securityMarginHeight = dscc.getHeight() * 0.03;
+    const securityMarginWidth = dscc.getWidth() * 0.01;
+    
     const margin = { left: 80, right: 30, top: 30, bottom: 40 };
-    const height = dscc.getHeight() - margin.top - margin.bottom;
-    const width = dscc.getWidth() - margin.left - margin.right;
+    const height = dscc.getHeight() - margin.top - margin.bottom - securityMarginHeight;
+    const width = dscc.getWidth() - margin.left - margin.right - securityMarginWidth;
     const barChartHeight = height * 0.35;
     const scatterChartHeight = height * 0.65;
 
@@ -330,11 +334,13 @@ const drawViz = (message) => {
         .attr("id", "scatter-clip")
         .append("rect")
         .attr("width", width)
-        .attr("height", scatterChartHeight);
+        .attr("height", height);
 
     const barYScale = d3.scaleLinear()
         .domain([0, d3.max(data.map(d => d.metric[0]))])
         .range([0, barChartHeight]);
+    
+    barYScale.nice();
 
     // Configurar o gráfico de barras com clipping
     const barSvg = svg.append("g")
@@ -369,6 +375,14 @@ const drawViz = (message) => {
         .attr("height", barChartHeight)
         .attr("fill", "#000000");
 
+    // Linha horizontal no final do gráfico de barras
+    barSvg.append("rect")
+        .attr("x", 0)
+        .attr("y", barChartHeight - 1)
+        .attr("width", width)
+        .attr("height", 1)
+        .attr("fill", "#000000");
+
     // Adicionar descrição do eixo Y para o gráfico de barras
     barSvg.append("text")
         .attr("transform", "rotate(-90)")
@@ -387,6 +401,8 @@ const drawViz = (message) => {
         );*/
 
     const {yScale: scatterYScale, filteredData} = createScatterScales(data, scatterChartHeight, message);
+
+    scatterYScale.nice(5);
 
     // Configurar o gráfico de dispersão com clipping
     const scatterSvg = svg.append("g")

@@ -73,6 +73,12 @@
           "type": "CHECKBOX"
         },
         {
+          "id": "markCurrency",
+          "label": "Marcar Divisória",
+          "defaultValue": "false",
+          "type": "CHECKBOX"
+        },
+        {
           "id": "barPosition",
           "label": "Posição da Barra de Rolagem",
           "type": "SELECT_SINGLE",
@@ -123,6 +129,12 @@
           "defaultValue": {
             "color": "#1A73E8"
           }
+        },
+        {
+          "id": "grid",
+          "label": "Ativar Grade",
+          "defaultValue": "false",
+          "type": "CHECKBOX"
         }
       ]
     },
@@ -153,6 +165,12 @@
         {
           "id": "scatterFilter3",
           "label": "Mostrar valores nulos",
+          "defaultValue": "false",
+          "type": "CHECKBOX"
+        },
+        {
+          "id": "grid",
+          "label": "Ativar Grade",
           "defaultValue": "false",
           "type": "CHECKBOX"
         }
