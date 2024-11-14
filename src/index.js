@@ -3,7 +3,7 @@ const dscc = require('@google/dscc');
 const local = require('./localMessage.js');
 
 // Definir se estamos em desenvolvimento local
-export const LOCAL = true;
+export const LOCAL = false;
 
 // Função para formatar dinamicamente os rótulos do eixo Y
 const autoFormat = (yScale) => {
@@ -47,14 +47,14 @@ const formatTooltipData = (d, message, chartType) => {
 
     if (chartType === "bar") {
         // Configurações para o gráfico de barras
-        metricLabel = message.fields.metric[0].name; // "Precipitação"
+        metricLabel = message.fields.metric[0].name;
         metricValue = d.metric[0];
     } else if (chartType === "scatter") {
         // Configurações para o gráfico de dispersão
-        metricLabel = message.fields.metric1[0].name; // "CONCENTRAÇÃO (µg L⁻¹)"
+        metricLabel = message.fields.metric1[0].name;
         metricValue = d.metric1[0];
         
-        additionalMetricLabel = message.fields.metric2[0].name; // "AGROTÓXICO"
+        additionalMetricLabel = message.fields.metric2[0].name;
         additionalMetricValue = d.metric2[0];
     }
 
@@ -171,7 +171,7 @@ const drawBars = (svg, data, xScale, yScale, chartWidth, message) => {
                 .attr("r", 20)
                 .style("stroke", barColor)
                 .style("stroke-width", 15);
-
+        
             // Mostra a tooltip com dados formatados
             tooltip
                 .html(formatTooltipData(d, message, "bar"))
@@ -180,10 +180,27 @@ const drawBars = (svg, data, xScale, yScale, chartWidth, message) => {
                 .style("top", (event.pageY - 10) + "px");
         })
         .on("mousemove", function(event) {
-            // Move a tooltip com o mouse
+            const tooltipWidth = tooltip.node().offsetWidth;
+            const tooltipHeight = tooltip.node().offsetHeight;
+            const pageWidth = window.innerWidth;
+            const pageHeight = window.innerHeight;
+            let tooltipX = event.pageX + 10; // Posição padrão (direita do mouse)
+            let tooltipY = event.pageY - 10; // Posição padrão (acima do mouse)
+        
+            // Verifica se o mouse está perto da margem direita
+            if (event.pageX + tooltipWidth + 10 > pageWidth) {
+                tooltipX = event.pageX - tooltipWidth - 10; // Move para a esquerda do mouse
+            }
+        
+            // Verifica se o mouse está perto da margem inferior
+            if (event.pageY + tooltipHeight - 10 > pageHeight) {
+                tooltipY = event.pageY - tooltipHeight - 10; // Move para cima do mouse
+            }
+        
+            // Move a tooltip para a posição calculada
             tooltip
-                .style("left", (event.pageX + 10) + "px")
-                .style("top", (event.pageY - 10) + "px");
+                .style("left", tooltipX + "px")
+                .style("top", tooltipY + "px");
         })
         .on("mouseout", function() {
             // Retorna a barra ao estilo original
@@ -192,10 +209,10 @@ const drawBars = (svg, data, xScale, yScale, chartWidth, message) => {
                 .duration(200)
                 .attr("r", 5)
                 .style("stroke", "none");
-
+        
             // Esconde a tooltip
             tooltip.style("opacity", 0);
-        });
+        });        
 };
 
 // Função para criar escalas X e Y para o gráfico de dispersão
@@ -253,11 +270,28 @@ const drawScatter = (svg, filteredData, xScale, yScale, message) => {
                 .style("top", (event.pageY - 10) + "px");
         })
         .on("mousemove", function(event) {
-            // Move a tooltip com o mouse
+            const tooltipWidth = tooltip.node().offsetWidth;
+            const tooltipHeight = tooltip.node().offsetHeight;
+            const pageWidth = window.innerWidth;
+            const pageHeight = window.innerHeight;
+            let tooltipX = event.pageX + 10; // Posição padrão (direita do mouse)
+            let tooltipY = event.pageY - 10; // Posição padrão (acima do mouse)
+        
+            // Verifica se o mouse está perto da margem direita
+            if (event.pageX + tooltipWidth + 10 > pageWidth) {
+                tooltipX = event.pageX - tooltipWidth - 10; // Move para a esquerda do mouse
+            }
+        
+            // Verifica se o mouse está perto da margem inferior
+            if (event.pageY + tooltipHeight - 10 > pageHeight) {
+                tooltipY = event.pageY - tooltipHeight - 10; // Move para cima do mouse
+            }
+        
+            // Move a tooltip para a posição calculada
             tooltip
-                .style("left", (event.pageX + 10) + "px")
-                .style("top", (event.pageY - 10) + "px");
-        })
+                .style("left", tooltipX + "px")
+                .style("top", tooltipY + "px");
+        })        
         .on("mouseout", function() {
             // Retorna o ponto ao tamanho normal
             d3.select(this)
@@ -299,12 +333,15 @@ const drawViz = (message) => {
     //Margens de segurança para evitar sobreposição dos gráficos e aparição de barras de rolagem
     const securityMarginHeight = dscc.getHeight() * 0.03;
     const securityMarginWidth = dscc.getWidth() * 0.01;
+
+    //Espaçamento entre os gráficos
+    const spacing = message.style.spacing.value || message.style.spacing.defaultValue || 0;
     
     const margin = { left: 80, right: 30, top: 30, bottom: 40 };
     const height = dscc.getHeight() - margin.top - margin.bottom - securityMarginHeight;
     const width = dscc.getWidth() - margin.left - margin.right - securityMarginWidth;
-    const barChartHeight = height * 0.35;
-    const scatterChartHeight = height * 0.65;
+    const barChartHeight = height * 0.35 - spacing;
+    const scatterChartHeight = height * 0.65 - spacing;
 
     const parseDate = d3.timeParse("%Y%m%d");
     const data = message.tables.DEFAULT.map(d => ({
@@ -375,14 +412,6 @@ const drawViz = (message) => {
         .attr("height", barChartHeight)
         .attr("fill", "#000000");
 
-    // Linha horizontal no final do gráfico de barras
-    barSvg.append("rect")
-        .attr("x", 0)
-        .attr("y", barChartHeight - 1)
-        .attr("width", width)
-        .attr("height", 1)
-        .attr("fill", "#000000");
-
     // Adicionar descrição do eixo Y para o gráfico de barras
     barSvg.append("text")
         .attr("transform", "rotate(-90)")
@@ -392,21 +421,13 @@ const drawViz = (message) => {
         .style("text-anchor", "middle")
         .text(message.style.labelBarY.value || message.fields.metric[0].name);
 
-    /*barSvg.append("g")
-        .attr("class", "y-grid")
-        .call(d3.axisLeft(barYScale)
-            .ticks(5)
-            .tickSize(-width) // Define o comprimento da grade
-            .tickFormat("") // Remove os rótulos
-        );*/
-
     const {yScale: scatterYScale, filteredData} = createScatterScales(data, scatterChartHeight, message);
 
     scatterYScale.nice(5);
 
     // Configurar o gráfico de dispersão com clipping
     const scatterSvg = svg.append("g")
-        .attr("transform", `translate(${margin.left}, ${margin.top + barChartHeight})`);
+        .attr("transform", `translate(${margin.left}, ${margin.top + barChartHeight + (spacing * 2)})`);
 
     // Adicionar área com clip-path para os pontos
     scatterSvg.append("g")
@@ -458,25 +479,27 @@ const drawViz = (message) => {
         .attr("dy", "1em")
         .style("text-anchor", "middle")
         .text(message.style.labelScatterY.value || message.fields.metric1[0].name);
-    
-    /*// Grade horizontal (eixo Y)
-    scatterSvg.append("g")
-    .attr("class", "y-grid")
-    .call(d3.axisLeft(scatterYScale)
-        .ticks(5)
-        .tickSize(-width)
-        .tickFormat("") // Remove os rótulos
-    );
 
-    // Grade vertical (eixo X)
-    scatterSvg.append("g")
-    .attr("class", "x-grid")
-    .attr("transform", `translate(0, ${scatterChartHeight})`)
-    .call(d3.axisBottom(xScale)
-        .ticks(20)
-        .tickSize(-scatterChartHeight)
-        .tickFormat("") // Remove os rótulos
-    );*/
+    if ( message.style.markCurrency.value == true || message.style.markCurrency.defaultValue == true ) {
+        // Linha horizontal no final do gráfico de barras
+        barSvg.append("rect")
+            .attr("x", 0)
+            .attr("y", barChartHeight - 1)
+            .attr("width", width)
+            .attr("height", 1)
+            .attr("fill", "#000000");
+
+        // Linha horizontal no final do gráfico de barras
+        barSvg.append("rect")
+            .attr("x", 0)
+            .attr("y", barChartHeight + (spacing * 2) - 1)
+            .attr("width", width)
+            .attr("height", 1)
+            .attr("fill", "#000000");
+    }
+
+    // Selecione o contêiner SVG
+    const container = document.querySelector('svg');
     
     const zoom = d3.zoom()
         .scaleExtent([1, 15])
@@ -506,6 +529,13 @@ const drawViz = (message) => {
 
     if (message.style.zoom.value == true || message.style.zoom.defaultValue == true) {
         svg.call(zoom);
+
+        // Evento para bloquear o scroll fora do gráfico
+        container.addEventListener('wheel', (event) => {
+            if (message.style.zoom.value || message.style.zoom.defaultValue) {
+                event.preventDefault();  // Bloqueia o scroll na página
+            }
+        }, { passive: false });
     }
 };
 

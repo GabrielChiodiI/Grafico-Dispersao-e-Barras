@@ -67,36 +67,16 @@
           "type": "CHECKBOX"
         },
         {
-          "id": "scrollBar",
-          "label": "Ativar Barra de Rolagem",
-          "defaultValue": "false",
-          "type": "CHECKBOX"
-        },
-        {
           "id": "markCurrency",
           "label": "Marcar Divisória",
           "defaultValue": "false",
           "type": "CHECKBOX"
         },
         {
-          "id": "barPosition",
-          "label": "Posição da Barra de Rolagem",
-          "type": "SELECT_SINGLE",
-          "defaultValue": "",
-          "options": [
-            {
-              "label": "Em cima",
-              "value": "top"
-            },
-            {
-              "label": "No meio",
-              "value": "middle"
-            },
-            {
-              "label": "Em baixo",
-              "value": "bottom"
-            }
-          ]
+          "id": "spacing",
+          "label": "Espaçamento",
+          "defaultValue": "0",
+          "type": "INTERVAL"
         },
         {
           "id": "labelBarY",
@@ -129,12 +109,6 @@
           "defaultValue": {
             "color": "#1A73E8"
           }
-        },
-        {
-          "id": "grid",
-          "label": "Ativar Grade",
-          "defaultValue": "false",
-          "type": "CHECKBOX"
         }
       ]
     },
@@ -144,7 +118,7 @@
       "elements": [
         {
           "id": "scatterColor",
-          "label": "Cor das Barras",
+          "label": "Cor das Bolhas",
           "type": "FILL_COLOR",
           "defaultValue": {
             "color": "#FF7F0E"
@@ -165,12 +139,6 @@
         {
           "id": "scatterFilter3",
           "label": "Mostrar valores nulos",
-          "defaultValue": "false",
-          "type": "CHECKBOX"
-        },
-        {
-          "id": "grid",
-          "label": "Ativar Grade",
           "defaultValue": "false",
           "type": "CHECKBOX"
         }

@@ -81262,9 +81262,13 @@ export const message = {
       "value": true,
       "defaultValue": false
     },
-    "scrollBar": {
+    "markCurrency": {
       "value": false,
       "defaultValue": false
+    },
+    "spacing": {
+      "value": 5,
+      "defaultValue": 0
     },
     "labelBarY": {
       "value": "Precipitação (mm)"
